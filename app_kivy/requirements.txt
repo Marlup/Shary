@@ -1,0 +1,7 @@
+kivy
+kivymd
+python-dotenv
+flask
+buildozer
+pyjnius
+cython
