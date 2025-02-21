@@ -8,7 +8,9 @@ ROW_HEIGHT = 40  # 🔧 Constant row height
 
 
 # Formats
-FILE_FORMATS = ["json", "csv", "xml", "yaml"]
+FILE_FORMATS = ("json", "csv", "xml", "yaml")
+FIELD_HEADERS = ("key", "value", "creation_date")
+USER_HEADERS = ("username", "email", "creation_date")
 
 # Predefined messages
 MSG_DEFAULT_SEND_FILENAME = "shary_fields_from_"

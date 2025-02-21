@@ -186,3 +186,135 @@ def parsed_table_as_vertical_string(screen_table, rows):
     
     parsed_json = "\n\t" + "\n\t".join(keys_values)
     return parsed_json
+
+def make_base_tables(conn=None):
+    if conn is None:
+        from sqlite3 import Connection
+        
+        conn = Connection("shary_demo")
+        conn.cursor()
+        # dates are ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS").
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS fields (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key VARCHAR(256) UNIQUE NOT NULL,
+                value TEXT,
+                custom_name VARCHAR(256),
+                creation_date TEXT DEFAULT (DATE('now'))
+            );
+            """
+            )
+        
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username VARCHAR(256) NOT NULL,
+                email VARCHAR(256) UNIQUE NOT NULL,
+                phone_number INTEGER,
+                phone_extension INTEGER,
+                creation_date TEXT DEFAULT (DATE('now'))
+            );
+            """
+            )
+        conn.commit()
+        conn.close()
+
+from kivymd.uix.dialog import MDDialog
+from kivymd.uix.button import MDRaisedButton
+from kivy.lang.builder import Builder
+
+def build_success_dialog():
+    return Builder.load_string('''
+BoxLayout:
+  orientation: 'vertical'
+  MDRaisedButton:
+    text: "Email Success"
+    on_release: app.show_success_dialog()
+                               '''
+                               )
+
+def show_success_dialog():
+    dialog = MDDialog(
+        title="Success",
+        text="Fields sent successfully!",
+        buttons=[
+            MDRaisedButton(
+                text="OK",
+                on_release=lambda x: dialog.dismiss()
+            ),
+        ],
+    )
+    dialog.open()
+
+# Warnings
+def build_no_fields_warning_dialog():
+    return Builder.load_string('''
+BoxLayout:
+  orientation: 'vertical'
+  MDRaisedButton:
+    text: "No Fields Selected"
+    on_release: app.show_no_fields_warning_dialog()
+                               '''
+                               )
+
+def show_no_fields_warning_dialog():
+    dialog = MDDialog(
+        title="Warning",
+        text="Please select at least one field to send.",
+        buttons=[
+            MDRaisedButton(
+                text="OK",
+                on_release=lambda x: dialog.dismiss()
+            ),
+        ],
+    )
+    dialog.open()
+
+def build_format_warning_dialog():
+    return Builder.load_string('''
+BoxLayout:
+  orientation: 'vertical'
+  MDRaisedButton:
+    text: "Bad Format"
+    on_release: app.show_format_warning_dialog()
+                               '''
+                               )
+
+def show_format_warning_dialog():
+    dialog = MDDialog(
+        title="Warning",
+        text="Unsupported format.",
+        buttons=[
+            MDRaisedButton(
+                text="OK",
+                on_release=lambda x: dialog.dismiss()
+            ),
+        ],
+    )
+    dialog.open()
+
+# Errors
+def build_email_error_dialog():
+    return Builder.load_string('''
+BoxLayout:
+  orientation: 'vertical'
+  MDRaisedButton:
+    text: "Email Error"
+    on_release: app.show_email_error_dialog()
+                               '''
+                               )
+
+def show_email_error_dialog():
+    dialog = MDDialog(
+        title="Error at email send",
+        text="Unsupported format.",
+        buttons=[
+            MDRaisedButton(
+                text="OK",
+                on_release=lambda x: dialog.dismiss()
+            ),
+        ],
+    )
+    dialog.open()

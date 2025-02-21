@@ -9,8 +9,6 @@ from kivymd.toast import toast
 from kivy.utils import platform
 from kivy.core.window import Window
 
-load_dotenv(".env")
-
 if platform == 'android':
     from jnius import autoclass
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -19,7 +17,6 @@ else:
     print("Running on non-Android platform.")
 
 FINGERPRINT_AVAILABLE = False
-
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
@@ -49,7 +46,6 @@ class LoginScreen(Screen):
 
         self.add_widget(layout)
 
-
     def focus_next_mdtextfield(self):
         """Cycle focus between MDTextFields only."""
         if self.manager.current != 'login':  # Ensure you're on the correct screen
@@ -70,6 +66,8 @@ class LoginScreen(Screen):
         """Check credentials and navigate if valid."""
         username = self.username_input.text.strip()
         password = self.password_input.text.strip()
+
+        print(username, os.getenv("SHARY_USERNAME"), password, os.getenv("SHARY_PASSWORD"))
 
         if username == os.getenv("SHARY_USERNAME") and password == os.getenv("SHARY_PASSWORD"):
             self.manager.current = "fields"
@@ -100,7 +98,11 @@ class LoginScreen(Screen):
         return False
 
     def on_enter(self):
-        """Bind key event when this screen becomes active."""
+        """Initialize on enter."""
+        # Load env variables
+        load_dotenv(".env")
+        
+        #Bind key event when this screen becomes active.
         print(f"Screen '{self.name}' active: Key events bound.")
         Window.bind(on_key_down=self.on_key_down)
 

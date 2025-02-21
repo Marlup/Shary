@@ -1,11 +1,13 @@
-from kivy.lang import Builder
-from kivy.uix.screenmanager import Screen
-from kivymd.uix.dialog import MDDialog
-from dotenv import load_dotenv, set_key
 import re
 import os
 
-load_dotenv(".env")
+from dotenv import load_dotenv, set_key
+
+from kivy.lang import Builder
+from kivy.uix.screenmanager import Screen
+from kivymd.uix.dialog import MDDialog
+
+from source.func_utils import make_base_tables
 
 KV = """
 <UserCreationScreen>:
@@ -45,8 +47,12 @@ KV = """
             on_release: root.create_user()
 """
 
-
 class UserCreationScreen(Screen):
+
+    def __init__(self, **kwargs):
+        super().__init__(name="user_creation", **kwargs)
+
+        make_base_tables()
 
     def validate_password(self, password):
         if len(password) < 8:
@@ -89,7 +95,11 @@ class UserCreationScreen(Screen):
         dialog = MDDialog(title=title, text=message)
         dialog.open()
 
+    def on_enter(self):
+        """Initialize on enter."""
+        # Load env variables
+        load_dotenv(".env")
 
 def get_user_creation_screen():
     Builder.load_string(KV)
-    return UserCreationScreen(name="create_user")
+    return UserCreationScreen()

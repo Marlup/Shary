@@ -10,7 +10,6 @@ from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.uix.togglebutton import ToggleButton
 from kivy.core.window import Window
 
-
 class SelectableButton(RecycleDataViewBehavior, ToggleButton):
     """Selectable button to mimic ListItemButton behavior in RecycleView."""
     index = None

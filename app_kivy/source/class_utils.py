@@ -87,12 +87,18 @@ class ComboBoxTable(GridLayout):
 class SelectableRow(BoxLayout):
     """Row with a round toggle button for selection and highlighting."""
 
-    def __init__(self, key, value, date, select_callback, **kwargs):
+    #def __init__(self, key, value, date, select_callback, **kwargs):
+    def __init__(self, *values, select_callback=None, **kwargs):
         super().__init__(orientation='horizontal', size_hint_y=None, height=ROW_HEIGHT, **kwargs)
-        self.key = key
-        self.value = value
-        self.date = date
-        self.select_callback = select_callback
+        #self.key = key
+        #self.value = value
+        #self.date = date
+        self.field_data = values[:-1]
+        self.field_date = values[-1]
+        if select_callback is None:
+            self.select_callback = lambda x: ()
+        else:
+            self.select_callback = select_callback
         self.selected = False
 
         # ✅ Round selection button
@@ -106,9 +112,11 @@ class SelectableRow(BoxLayout):
         self.add_widget(self.select_button)
 
         # ✅ Row data fields
-        self.key_input = TextInput(text=key, readonly=True, size_hint_y=None, height=ROW_HEIGHT)
-        self.value_input = TextInput(text=value, size_hint_y=None, height=ROW_HEIGHT, multiline=True)
-        self.date_label = Label(text=str(date), size_hint_y=None, height=ROW_HEIGHT)
+        for data in self.field_data:
+            text_input_widget = TextInput(text=data, readonly=True, size_hint_y=None, height=ROW_HEIGHT)
+            self.add_widget(text_input_widget)
+        date_label = Label(text=str(self.field_date), size_hint_y=None, height=ROW_HEIGHT, color=(0, 0, 0, 1))
+        self.add_widget(date_label)
 
         # ✅ Delete button
         self.delete_button = Button(
@@ -118,9 +126,6 @@ class SelectableRow(BoxLayout):
             height=40,
             background_color=[0.8, 0, 0, 0.8]
         )
-        self.add_widget(self.key_input)
-        self.add_widget(self.value_input)
-        self.add_widget(self.date_label)
         self.add_widget(self.delete_button)
 
     def toggle_selection(self, instance):

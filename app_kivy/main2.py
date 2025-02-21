@@ -28,7 +28,7 @@ class SharyScreenManager(ScreenManager):
         if os.getenv("SHARY_USERNAME") and os.getenv("SHARY_PASSWORD"):
             self.current = "login"
         else:
-            self.current = "create_user"
+            self.current = "user_creation"
 
 def restrict_access():
     allowed_ips = ['127.0.0.1']

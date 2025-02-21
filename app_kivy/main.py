@@ -65,11 +65,9 @@ class MainLayout(BoxLayout):
     """Main layout containing the selectable RecycleView."""
     pass
 
-
 class RowSelectionApp(App):
     def build(self):
         return MainLayout()
-
 
 if __name__ == '__main__':
     RowSelectionApp().run()

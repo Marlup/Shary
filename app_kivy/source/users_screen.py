@@ -3,11 +3,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
-from kivy.lang import Builder
 from kivy.core.window import Window
-import mysql.connector
+from kivy.graphics import Color, Rectangle
+
+import sqlite3
 
 from source.query_schemas import (
     SELECT_ALL_USERS,
@@ -17,42 +19,54 @@ from source.query_schemas import (
 
 from source.constant import (
     ROW_HEIGHT,
+    USER_HEADERS,
 )
+
+from source.class_utils import SelectableRow
 
 class UsersScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(name="users", **kwargs)
-
         self.db_connection = self.connect_db()
+
+        # Initialize internal _attributes
+        self._selected_users = []
         
-        main_layout = BoxLayout(orientation="vertical")
-        self.header = Label(text="Users Management", size_hint_y=None, height=50)
-        main_layout.add_widget(self.header)
+        # Main layout
+        main_layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
+
+        # Title header
+        title_header = Label(text="Users Management", size_hint_y=None, height=50)
+        main_layout.add_widget(title_header)
+        
+        # Header
+        header_layout = BoxLayout(size_hint=(1, 0.1), height=ROW_HEIGHT)
+        self.add_header_label(header_layout, "[b]Username[/b]")
+        self.add_header_label(header_layout, "[b]Email[/b]")
+        self.add_header_label(header_layout, "[b]Phone[/b]")
+        self.add_header_label(header_layout, "[b]Date[/b]")
+        main_layout.add_widget(header_layout)
 
         # Table Container
         self.table = GridLayout(
-            cols=4, 
+            cols=1, 
             size_hint_y=None,
             row_default_height=ROW_HEIGHT,
             row_force_default=True,
             spacing=5,
             padding=[5, 5, 5, 5],
             )
-        #self.table.bind(minimum_height=self.table.setter('height'))
         
-        # Load Fields
-        self.load_users_from_db()
-        
-        scroll_view = ScrollView()
+        # Load Users
+        self.load_users_from_db(SELECT_ALL_USERS)
+        self.rows_indices = [i for i in self.table.children]
+
+        scroll_view = ScrollView(size_hint=(1, 0.9))
         scroll_view.add_widget(self.table)
         main_layout.add_widget(scroll_view)
         
         # Buttons Layout
         btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=20)
-    
-        # Delete user Layout
-        self.delete_button = Button(text="Delete Selected")
-        self.delete_button.bind(on_press=self.delete_users)
 
         # Add user Layout
         self.add_user_button = Button(text="Add User")
@@ -64,107 +78,116 @@ class UsersScreen(Screen):
         
         btn_layout.add_widget(self.back_button)
         btn_layout.add_widget(self.add_user_button)
-        btn_layout.add_widget(self.delete_button)
         main_layout.add_widget(btn_layout)
         
         self.add_widget(main_layout)
 
-    def connect_db(self):
-        return mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="admin",
-            database="shary_demo"
-        )
+    def update_selected_users(self, row_data, is_selected):
+        """Track selected rows for future operations."""
+        print(row_data)
+        if is_selected:
+            if row_data not in self._selected_users:
+                self._selected_users.append(row_data)
+        else:
+            if row_data in self._selected_users:
+                self._selected_users.remove(row_data)
+        print(f"Selected users: {self._selected_users}")
 
-    def load_users_from_db(self):
+    def delete_row(self, row, row_data):
+        """Delete a specific row."""
+        key = row_data[0]
+        print(f"Deleting row with key: {key}")
+
+        self.delete_user(key)
+        self.table.remove_widget(row)
+        self.update_selected_users(row_data, False)
+
+    def delete_user(self, key):
+        """Deletes a user by username from the database."""
         cursor = self.db_connection.cursor()
-        cursor.execute(SELECT_ALL_USERS)
+        cursor.execute(DELETE_USER_BY_USERNAME, (key, ))
+        self.db_connection.commit()
+        cursor.close()
+        self.load_users_from_db(SELECT_ALL_USERS)
+
+    def add_header_label(self, layout, text):
+        """Add a styled label to the header."""
+        label = Label(
+            text=text,
+            markup=True,            # Enables [b] bold tags
+            halign="center",
+            valign="middle"
+        )
+        label.bind(size=label.setter('text_size'))  # Ensure text aligns properly
+        with label.canvas.before:
+            Color(0.2, 0.6, 0.8, 0.8)  # Background color (light blue)
+            rect = Rectangle(pos=label.pos, size=label.size)
+            label.bind(pos=lambda instance, value: setattr(rect, 'pos', instance.pos))
+            label.bind(size=lambda instance, value: setattr(rect, 'size', instance.size))
+        layout.add_widget(label)
+
+    def connect_db(self):
+        return sqlite3.connect("shary_demo")
+
+    def load_users_from_db(self, query):
+        cursor = self.db_connection.cursor()
+        cursor.execute(query)
         records = cursor.fetchall()
-        print(records)
-        
+        cursor.close()
+
         # Clear existing widgets
         self.table.clear_widgets()
-        
-        # Display rows
-        self.table.add_widget(Label(text="Username", bold=True))
-        self.table.add_widget(Label(text="Email", bold=True))
-        self.table.add_widget(Label(text="Date", bold=True))
-        
+
         # Display rows
         self.rows = []
-        for username, email, created_at in records:
-            row = [
-                TextInput(text=username, readonly=True, size_hint_y=None, height=ROW_HEIGHT),
-                TextInput(text=email, readonly=True, size_hint_y=None, height=ROW_HEIGHT),
-                Label(text=str(created_at), size_hint_y=None, height=ROW_HEIGHT),
-                Button(
-                    text="🗑️",
-                    size_hint=(None, None),
-                    width=40,
-                    height=40,
-                    on_press=lambda instance, k=username: self.delete_users(k)
-                    )
-            ]
-            self.rows.append(row)
-            for widget in row:
-                self.table.add_widget(widget)
 
-        cursor.close()
+        for record in records:
+            print(record)
+            row = SelectableRow(
+                *record,
+                select_callback=self.update_selected_users
+            )
+            # Dummy delete button action
+            row.delete_button.bind(on_press=lambda instance: self.delete_row(row, record))
+            self.table.add_widget(row)
+
+        # Update height based on the number of rows
+        self.table.height = ROW_HEIGHT * len(records)
     
-    def focus_next_widget(self):
-        """Cycle focus between username, password, and login button."""
-        if self.manager.current != "users":  # Ensure you're on the right screen
-            return
-
-        focused_widget = next((w for w in self.table.children if getattr(w, "focus", False)), None)
-        if focused_widget:
-            current_index = self.table.children.index(focused_widget)
-            next_index = (current_index + 1) % len(self.table.children)
-        else:
-            next_index = 0
-
-        #print(f"next_index - {next_index}")
-        # Set focus
-        if hasattr(self.table.children[next_index], "focus"):
-            self.table.children[next_index].focus = True
-
     def add_user(self, instance):
-        popup_layout = BoxLayout(orientation="vertical")
+        """Opens a popup to add a new user."""
+        popup_layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        options_layout = BoxLayout(orientation="horizontal", spacing=10, padding=20)
+        
         username_input = TextInput(hint_text="Username")
         email_input = TextInput(hint_text="Email")
-        add_btn = Button(text="Add")
-        
-        def insert_user(instance):
+
+        def _save_user(instance):
             username = username_input.text.strip()
             email = email_input.text.strip()
             if username and email:
                 cursor = self.db_connection.cursor()
-                cursor.execute(INSERT_USER, (username, email))
+                cursor.execute(INSERT_USER, (username, email, 0, 0))
                 self.db_connection.commit()
                 cursor.close()
-                self.load_users_from_db()
+                self.load_users_from_db(SELECT_ALL_USERS)
+            popup.dismiss()
         
-        add_btn.bind(on_press=insert_user)
+        def _cancel_add(instance):
+            popup.dismiss()
+
+        save_btn = Button(text="Save", on_press=_save_user, size_hint=(1, 0.2))
+        cancel_btn = Button(text="Cancel", on_press=_cancel_add, size_hint=(1, 0.2))
         popup_layout.add_widget(username_input)
         popup_layout.add_widget(email_input)
-        popup_layout.add_widget(add_btn)
-        
-        self.add_widget(popup_layout)
-    
-    def delete_users(self, instance):
-        cursor = self.db_connection.cursor()
-        for username in selected_usernames:
-            cursor.execute(DELETE_USER_BY_USERNAME, (username, ))
-            self.db_connection.commit()
-            cursor.close()
 
-            for row in sorted(self.selected_rows, reverse=True):
-                self.table.removeRow(row)
+        options_layout.add_widget(cancel_btn)
+        options_layout.add_widget(save_btn)
+        popup_layout.add_widget(options_layout)
 
-            self.selected_rows.clear()
-            self.toggle_deletion_confirmation(False)
-    
+        popup = Popup(title="Add User", content=popup_layout, size_hint=(0.7, 0.4))
+        popup.open()
+
     def go_to_fields_screen(self, instance):
         self.manager.current = "fields"
 
@@ -175,6 +198,26 @@ class UsersScreen(Screen):
             return True
         return False
 
+    def focus_next_widget(self):
+        """Cycle focus between user's rows."""
+        if self.manager.current != 'users':  # Ensure you're on the right screen
+            return
+        
+        if not self.table.children:
+            return
+
+        focused_widget = next((w for w in self.table.children if getattr(w, 'focus', False)), None)
+        if focused_widget:
+            current_index = self.table.children.index(focused_widget)
+            next_index = (current_index + 1) % len(self.table.children)
+        else:
+            next_index = 0
+
+        #print(f"next_index - {next_index}")
+        # Set focus
+        if hasattr(self.table.children[next_index], 'focus'):
+            self.table.children[next_index].focus = True
+
     def on_enter(self):
         """Bind key event when this screen becomes active."""
         print(f"Screen '{self.name}' active: Key events bound.")
@@ -184,6 +227,14 @@ class UsersScreen(Screen):
         """Unbind key event when leaving this screen."""
         print(f"Screen '{self.name}' inactive: Key events unbound.")
         Window.unbind(on_key_down=self.on_key_down)
+
+    def get_selected_emails(self):
+        users = self._get_selected_users()
+        # user -> (username, email, creation_date)
+        return [user.field_data[1] for user in users]
+    
+    def _get_selected_users(self):
+        return self._selected_users
 
 def get_users_screen():
     #Builder.load_string()

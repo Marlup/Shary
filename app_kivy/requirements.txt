@@ -5,3 +5,4 @@ flask
 buildozer
 pyjnius
 cython
+mysql
