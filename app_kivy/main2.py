@@ -10,7 +10,7 @@ from source.user_creation_screen import get_user_creation_screen
 from source.login_screen import get_login_screen
 from source.fields_screen import get_fields_screen
 from source.users_screen import get_users_screen
-from source.fields_request_screen import get_fields_request_screen
+from source.requests_screen import get_fields_request_screen
 
 load_dotenv(".env")
 

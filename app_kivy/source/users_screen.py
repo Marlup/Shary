@@ -68,16 +68,21 @@ class UsersScreen(Screen):
         # Buttons Layout
         btn_layout = BoxLayout(size_hint_y=None, height=50, spacing=20)
 
+        # Back from users to fields Layout
+        self.back_button = Button(text="Back to Fields")
+        self.back_button.bind(on_press=self.go_to_fields_screen)
+        
         # Add user Layout
         self.add_user_button = Button(text="Add User")
         self.add_user_button.bind(on_press=self.add_user)
         
         # Back from users to fields Layout
-        self.back_button = Button(text="Back to Fields")
-        self.back_button.bind(on_press=self.go_to_fields_screen)
+        self.request_button = Button(text="Request Button")
+        self.request_button.bind(on_press=self.go_to_requests_screen)
         
         btn_layout.add_widget(self.back_button)
         btn_layout.add_widget(self.add_user_button)
+        btn_layout.add_widget(self.request_button)
         main_layout.add_widget(btn_layout)
         
         self.add_widget(main_layout)
@@ -190,6 +195,9 @@ class UsersScreen(Screen):
 
     def go_to_fields_screen(self, instance):
         self.manager.current = "fields"
+    
+    def go_to_requests_screen(self, instance):
+        self.manager.current = "requests"
 
     def on_key_down(self, window, key, scancode, codepoint, modifier):
         """Handle Tab and Enter key behaviors."""

@@ -15,23 +15,23 @@ def load_user_credentials():
     
     return sender_email, sender_password
 
-def build_email_string_body(sender, recipients, subject, filename, file_format, table_data, rows):
+def build_email_string_body(sender, recipients, subject, filename, file_format, rows):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     msg = MIMEMultipart()
 
     # Build the file as string
     if file_format == "json_req":
-        file_to_send = get_selected_fields_as_req_json(table_data, rows, sender)
+        file_to_send = get_selected_fields_as_req_json(rows, sender)
     else:
-        file_to_send = build_file_from_selected_fields(table_data, rows, file_format)
+        file_to_send = build_file_from_selected_fields(rows, file_format)
     
     if file_to_send is None:
         return "bad-format"
     
     # Build the body and the hyperlink using HTML
     # shary_uri = "shary://files/open?filename=file_path.json"
-    message_keys = parsed_table_as_vertical_string(table_data, rows)
+    message_keys = parsed_table_as_vertical_string(rows)
     shary_uri = f"http://files/open?filename=./{filename}"
 
     body = (
@@ -51,43 +51,47 @@ def build_email_string_body(sender, recipients, subject, filename, file_format, 
     msg["Subject"] = subject
     msg.set_content(MIMEText(body, "html"))
     msg.add_attachment(file_to_send, filename=filename, subtype=file_format)
-
     return msg
 
-def build_email_html_body(sender, recipients, subject, filename, file_format, table_data, rows):
+def build_email_html_body(sender, recipients, subject, filename, file_format, rows):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
-    msg = MIMEMultipart()
 
     # Build the file as string
+    print(f"file_format : {file_format}")
     if file_format == "json_req":
-        file_to_send = get_selected_fields_as_req_json(table_data, rows, sender)
+        file_to_send = get_selected_fields_as_req_json(rows, sender)
     else:
-        file_to_send = build_file_from_selected_fields(table_data, rows, file_format)
+        file_to_send = build_file_from_selected_fields(rows, file_format)
     
     if file_to_send is None:
         return "bad-format"
     
     # Build the body and the hyperlink using HTML
     # shary_uri = "shary://files/open?filename=file_path.json"
-    message_keys = parsed_table_as_vertical_string(table_data, rows)
+    message_keys = parsed_table_as_vertical_string(rows)
     shary_uri = f"http://localhost:5001/files/open?filename=./{filename}"
     body = f"""
 <html>
 <body>
-    <p><a href="{shary_uri}" target="_blank">Open in Shary to visualize the data</a></p>
+    <p>
+        <a href="{shary_uri}" target="_blank">Click to open Shary and visualize the data</a>
+    </p>
 </body>
 </html>
 """
 
     # Create the email
-    #msg = EmailMessage()
+    #msg = MIMEMultipart()
+    msg = EmailMessage()
     msg["From"] = sender
     msg["To"] = ", ".join(recipients)
     msg["Subject"] = subject
-    msg.attach(MIMEText(body, "html"))
+    msg.attach(MIMEText(body, "html", "utf-8"))
+    #msg.set_content(body, "html")
     #msg.set_content(MIMEText(body, "html"))
-    #msg.add_attachment(file_to_send, filename=filename, subtype=file_format)
+    #msg.add_alternative(body, subtype="html")
+    msg.add_attachment(file_to_send, filename=filename, subtype=file_format)
 
     return msg
 
@@ -100,56 +104,52 @@ def send_email(sender_email, sender_password, message):
     except Exception as e:
         return e
 
-def build_file_from_selected_fields(screen_table, rows, file_format="json"):
+def build_file_from_selected_fields(rows, file_format="json"):
     if file_format == "json":
-        return get_selected_fields_as_json(screen_table, rows)
+        return get_selected_fields_as_json(rows)
     elif file_format == "csv":
-        return get_selected_fields_as_csv(screen_table, rows)
+        return get_selected_fields_as_csv(rows)
     elif file_format == "xml":
-        return get_selected_fields_as_xml(screen_table, rows)
+        return get_selected_fields_as_xml(rows)
     elif file_format == "yaml":
-        return get_selected_fields_as_yaml(screen_table, rows)
+        return get_selected_fields_as_yaml(rows)
     else:
         return None
 
-def get_selected_fields_as_json(screen_table, rows):
+def get_selected_fields_as_json(rows):
     """ Get selected fields as a JSON dictionary. """
     json_fields = {}
     
     for row in rows:
-        key = screen_table.item(row, 0).text().strip()
-        value = screen_table.item(row, 1).text().strip()
+        key, value = row.field_data
         json_fields[key] = value
     
     return json.dumps(json_fields, indent=4)
 
-def get_selected_fields_as_req_json(screen_table, rows, sender):
+def get_selected_fields_as_req_json(rows, sender):
     """ Get fields as a JSON with request format. """
     json_fields = {}
     
     for row in rows:
-        key = screen_table.item(row, 0).text().strip()
-        value = screen_table.item(row, 1).text().strip()
+        key, value = row.field_data
         json_fields[key] = value
     json_fields["mode"] = "request"
     json_fields["sender"] = sender
     
     return json.dumps(json_fields, indent=4)
 
-def get_selected_fields_as_xml(screen_table, rows):
+def get_selected_fields_as_xml(rows):
     """ Get selected fields as an XML string. """
     root = ET.Element("Fields")
 
     for row in rows:
-        key = screen_table.item(row, 0).text().strip()
-        value = screen_table.item(row, 1).text().strip()
-
+        key, value = row.field_data
         field_element = ET.SubElement(root, "Field", key=key)
         field_element.text = value
 
     return ET.tostring(root, encoding="utf-8").decode("utf-8")
 
-def get_selected_fields_as_csv(screen_table, rows):
+def get_selected_fields_as_csv(rows):
     """ Get selected fields as a CSV string. """
     output = StringIO()
     writer = csv.writer(output)
@@ -158,31 +158,28 @@ def get_selected_fields_as_csv(screen_table, rows):
     writer.writerow(["Key", "Value"])
 
     for row in rows:
-        key = screen_table.item(row, 0).text().strip()
-        value = screen_table.item(row, 1).text().strip()
+        key, value = row.field_data
         writer.writerow([key, value])
 
     return output.getvalue()
 
-def get_selected_fields_as_yaml(screen_table, rows):
+def get_selected_fields_as_yaml(rows):
     """ Get selected fields as a YAML dictionary. """
     yaml_fields = {}
     
     for row in rows:
-        key = screen_table.item(row, 0).text().strip()
-        value = screen_table.item(row, 1).text().strip()
+        key, value = row.field_data
         yaml_fields[key] = value
 
     return yaml.dump(yaml_fields, 
                      default_flow_style=False,
                      allow_unicode=True)
 
-def parsed_table_as_vertical_string(screen_table, rows):
+def parsed_table_as_vertical_string(rows):
     keys_values = []
     for row in rows:
-        k = screen_table.item(row, 0).text().strip()
-        v = screen_table.item(row, 1).text().strip()
-        keys_values.append(f"- {k}: {v}")
+        key, value = row.field_data
+        keys_values.append(f"- {key}: {value}")
     
     parsed_json = "\n\t" + "\n\t".join(keys_values)
     return parsed_json

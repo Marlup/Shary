@@ -26,7 +26,8 @@ class LoginScreen(Screen):
     def build_ui(self):
         layout = BoxLayout(orientation="vertical", padding=20, spacing=20)
 
-        self.label = Label(text="Shary Login", halign="center")
+        self.label_welcome = Label(text="Welcome to Shary!", halign="center", color="blue")
+        self.label_login = Label(text="Login", halign="center", color="black")
         self.username_input = MDTextField(hint_text="Username", multiline=False)
         self.password_input = MDTextField(hint_text="Password", password=True, multiline=False)
 
@@ -37,7 +38,8 @@ class LoginScreen(Screen):
         self.widgets_list = [self.username_input, self.password_input]
 
         # Adding widgets to layout
-        layout.add_widget(self.label)
+        layout.add_widget(self.label_welcome)
+        layout.add_widget(self.label_login)
         layout.add_widget(self.username_input)
         layout.add_widget(self.password_input)
         layout.add_widget(self.login_button)
