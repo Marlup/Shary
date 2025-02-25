@@ -14,6 +14,7 @@ import sqlite3
 
 from source.query_schemas import (
     SELECT_ALL_FIELDS,
+    SELECT_ONE_FIELD_BY_KEY,
     DELETE_FIELD_BY_KEY,
     INSERT_FIELD,
 )
@@ -28,13 +29,10 @@ from source.constant import (
 from source.class_utils import SelectableRow
 
 from source.func_utils import (
-    build_success_dialog,
-    build_format_warning_dialog,
-    build_email_error_dialog,
-    build_no_fields_warning_dialog,
     send_email, 
     build_email_html_body,
     load_user_credentials,
+    information_panel
 )
 
 class FieldsScreen(Screen):
@@ -73,7 +71,6 @@ class FieldsScreen(Screen):
 
         # Load Fields
         self.load_fields_from_db(SELECT_ALL_FIELDS)
-        self.rows_indices = [i for i in self.table.children]
         
         scroll_view = ScrollView(size_hint=(1, 0.9))
         scroll_view.add_widget(self.table)
@@ -88,9 +85,9 @@ class FieldsScreen(Screen):
         btn_layout.add_widget(self.send_btn)
 
         # Add button
-        self.add_field_btn = Button(text="Add Field")
-        self.add_field_btn.bind(on_press=self.add_field)
-        btn_layout.add_widget(self.add_field_btn)
+        self.add_btn = Button(text="Add Field")
+        self.add_btn.bind(on_press=self.add_field)
+        btn_layout.add_widget(self.add_btn)
 
         # Select users button
         self.select_users_btn = Button(text="Select Users")
@@ -112,7 +109,7 @@ class FieldsScreen(Screen):
     def delete_row(self, row, row_data):
         """Delete a specific row."""
         key = row_data[0]
-        print(f"Deleting row with key: {key}")
+        #print(f"Deleting row with key: {key} - {row.get_data()}")
         
         self.delete_field(key)
         self.table.remove_widget(row)
@@ -124,13 +121,17 @@ class FieldsScreen(Screen):
         cursor.execute(DELETE_FIELD_BY_KEY, (key, ))
         self.db_connection.commit()
         cursor.close()
-        self.load_fields_from_db(SELECT_ALL_FIELDS)
+        #self.refresh_table()
 
         self.on_n_rows_changed = True
 
     def send_fields(self, instance):
-        popup_layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        options_layout = BoxLayout(orientation="horizontal", spacing=10, padding=10)
+        if len(self._selected_fields) == 0:
+            information_panel("Action: sending email", "Select at least one field to send.")
+            return
+
+        popup_layout = BoxLayout(orientation="vertical")
+        options_layout = BoxLayout(orientation="horizontal", spacing=300)
         
         filename_input = TextInput(hint_text="file name")
         popup_layout.add_widget(filename_input)
@@ -139,11 +140,16 @@ class FieldsScreen(Screen):
         # Add items dynamically
         for file_format in FILE_FORMATS:
             btn = Button(text=file_format, size_hint_y=None, height=44)
-            btn.bind(on_release=lambda btn: dropdown_formats.select(btn.text))
+            btn.bind(on_press=lambda btn: dropdown_formats.select(btn.text))
             dropdown_formats.add_widget(btn)
         
-        file_format_button = Button(text="Select a format", size_hint=(None, None), size=(200, 44))
-        file_format_button.bind(on_release=dropdown_formats.open)
+        file_format_button = Button(text="Select a format", 
+                                    size_hint=(None, None),
+                                    size=(200, 44),
+                                    #halign="center",
+                                    valign="middle"
+                                    )
+        file_format_button.bind(on_press=dropdown_formats.open)
         
         def update_button_text(instance, selection):
             file_format_button.text = selection
@@ -151,22 +157,20 @@ class FieldsScreen(Screen):
         dropdown_formats.bind(on_select=update_button_text)
         popup_layout.add_widget(file_format_button)
 
+        def _exit_send_email(instance):
+            popup.dismiss()
+
         def _accept_send_email(instance):
             sender_email, sender_password = load_user_credentials()
             # Accessing 'user_input' TextInput from FirstScreen
             recipients = self.manager.get_screen('users').get_selected_emails()
-            
-            # Collect selected fields
-            num_fields = len(self._selected_fields)
-            
-            if num_fields == 0:
-                build_no_fields_warning_dialog()
+            if not self.table.children:
+                information_panel("Action: sending email", "Select at least one external user to send to.")
                 return
-
-            subject = f"Shary message with {num_fields} fields"
-
+            
             file_format = file_format_button.text.strip()
-            if not file_format:
+            if file_format not in FILE_FORMATS:
+                information_panel("Action: sending email", "Invalid file format.")
                 return
             
             filename = filename_input.text.strip()
@@ -175,6 +179,7 @@ class FieldsScreen(Screen):
                 filename = f"{MSG_DEFAULT_SEND_FILENAME}{sender_name}"
             filename += f".{file_format}"
 
+            subject = f"Shary message with {len(self._selected_fields)} fields"
             message = build_email_html_body(
                 sender_email, 
                 recipients, 
@@ -185,21 +190,15 @@ class FieldsScreen(Screen):
                 )
 
             return_message = send_email(sender_email, sender_password, message)
-
             if return_message == "":
-                build_success_dialog()
+                information_panel("Action: sending email", "Email sent successfully")
             elif return_message == "bad-format":
-                build_format_warning_dialog()
+                information_panel("Action: sending email", "Invalid file format.")
             else:
-                build_email_error_dialog() # return_message
+                information_panel("Action: sending email", "Error at sending: " + str(return_message))
 
-            popup.dismiss()
-        
-        def _cancel_send_email(instance):
-            popup.dismiss()
-
-        send_btn = Button(text="Send", on_press=_accept_send_email, size_hint=(1, 0.2))
-        cancel_btn = Button(text="Cancel", on_press=_cancel_send_email, size_hint=(1, 0.2))
+        send_btn = Button(text="Send", on_press=_accept_send_email, size_hint=(0.3, 0.35))
+        cancel_btn = Button(text="Cancel", on_press=_exit_send_email, size_hint=(0.3, 0.35))
 
         options_layout.add_widget(cancel_btn)
         options_layout.add_widget(send_btn)
@@ -237,9 +236,6 @@ class FieldsScreen(Screen):
         
         # Clear existing widgets
         self.table.clear_widgets()
-
-        # Display rows
-        self.rows = []
         
         for record in records:
             row = SelectableRow(
@@ -247,19 +243,60 @@ class FieldsScreen(Screen):
                 select_callback=self.update_selected_fields
             )
             # Dummy delete button action
-            row.delete_button.bind(on_press=lambda instance, 
-                                   r=row: self.delete_row(r, record))
+            #print(f"row {row} bind to record {record}")
+            row.delete_button.bind(on_press=lambda _, r=row, rec=record: self.delete_row(r, rec))
             self.table.add_widget(row)
 
         # Update height based on the number of rows
         self.table.height = ROW_HEIGHT * len(records)
 
+    def load_one_field_from_db(self, query, key):
+        """Loads fields from the database and displays them in the UI."""
+        cursor = self.db_connection.cursor()
+        cursor.execute(query, (key, ))
+        record = cursor.fetchone()
+        cursor.close()
+        return record
+
+    def refresh_table(self):
+        """Refresh table rows to displays them in the UI."""
+        previous_rows = self.table.children.copy()
+
+        for previous_row in previous_rows:
+            record = previous_row.values
+            row = SelectableRow(
+                *record,
+                select_callback=self.update_selected_fields
+            )
+            # Dummy delete button action
+            row.delete_button.bind(on_press=lambda _, r=row, rec=record: self.delete_row(r, rec))
+            self.table.remove_widget(previous_row)
+            self.table.add_widget(row)
+
+        # Update height based on the number of rows
+        self.table.height = ROW_HEIGHT * len(self.table.children)
+
+    def refresh_one_row(self, key):
+        """Refresh table rows to displays them in the UI."""
+
+        record = self.load_one_field_from_db(SELECT_ONE_FIELD_BY_KEY, key)
+        row = SelectableRow(
+            *record,
+            select_callback=self.update_selected_fields
+        )
+        # Dummy delete button action
+        row.delete_button.bind(on_press=lambda _, r=row, rec=record: self.delete_row(r, rec))
+        self.table.add_widget(row)
+
+        # Update height based on the number of rows
+        self.table.height = ROW_HEIGHT * len(self.table.children)
+
     def add_field(self, instance):
         """Opens a popup to add a new field."""
-        popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
-        options_layout = BoxLayout(orientation="horizontal", spacing=10, padding=10)
+        popup_layout = BoxLayout(orientation='vertical')
+        options_layout = BoxLayout(orientation="horizontal", spacing=300)
         
-        key_input = TextInput(hint_text="Key")
+        key_input = TextInput(hint_text="Key", multiline=False)
         value_input = TextInput(hint_text="Value")
 
         def _save_field(instance):
@@ -270,14 +307,14 @@ class FieldsScreen(Screen):
                 cursor.execute(INSERT_FIELD, (key, value, ""))
                 self.db_connection.commit()
                 cursor.close()
-                self.load_fields_from_db(SELECT_ALL_FIELDS)
+                self.refresh_one_row(key)
             popup.dismiss()
         
         def _cancel_add(instance):
             popup.dismiss()
 
-        save_btn = Button(text="Save", on_press=_save_field, size_hint=(1, 0.2))
-        cancel_btn = Button(text="Cancel", on_press=_cancel_add, size_hint=(1, 0.2))
+        save_btn = Button(text="Save", on_press=_save_field, size_hint=(0.3, 0.35))
+        cancel_btn = Button(text="Cancel", on_press=_cancel_add, size_hint=(0.3, 0.35))
         popup_layout.add_widget(key_input)
         popup_layout.add_widget(value_input)
 

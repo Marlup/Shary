@@ -77,7 +77,7 @@ class UsersScreen(Screen):
         self.add_user_button.bind(on_press=self.add_user)
         
         # Back from users to fields Layout
-        self.request_button = Button(text="Request Button")
+        self.request_button = Button(text="Start Request")
         self.request_button.bind(on_press=self.go_to_requests_screen)
         
         btn_layout.add_widget(self.back_button)
@@ -147,13 +147,12 @@ class UsersScreen(Screen):
         self.rows = []
 
         for record in records:
-            print(record)
             row = SelectableRow(
                 *record,
                 select_callback=self.update_selected_users
             )
             # Dummy delete button action
-            row.delete_button.bind(on_press=lambda instance: self.delete_row(row, record))
+            row.delete_button.bind(on_press=lambda _: self.delete_row(row, record))
             self.table.add_widget(row)
 
         # Update height based on the number of rows
@@ -161,15 +160,16 @@ class UsersScreen(Screen):
     
     def add_user(self, instance):
         """Opens a popup to add a new user."""
-        popup_layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        options_layout = BoxLayout(orientation="horizontal", spacing=10, padding=20)
+        popup_layout = BoxLayout(orientation="vertical")
+        options_layout = BoxLayout(orientation="horizontal", spacing=300)
         
-        username_input = TextInput(hint_text="Username")
-        email_input = TextInput(hint_text="Email")
+        username_input = TextInput(hint_text="Username", multiline=False)
+        email_input = TextInput(hint_text="Email", multiline=False)
 
         def _save_user(instance):
             username = username_input.text.strip()
             email = email_input.text.strip()
+            
             if username and email:
                 cursor = self.db_connection.cursor()
                 cursor.execute(INSERT_USER, (username, email, 0, 0))
@@ -181,8 +181,8 @@ class UsersScreen(Screen):
         def _cancel_add(instance):
             popup.dismiss()
 
-        save_btn = Button(text="Save", on_press=_save_user, size_hint=(1, 0.2))
-        cancel_btn = Button(text="Cancel", on_press=_cancel_add, size_hint=(1, 0.2))
+        save_btn = Button(text="Save", on_press=_save_user, size_hint=(0.3, 0.35))
+        cancel_btn = Button(text="Cancel", on_press=_cancel_add, size_hint=(0.3, 0.35))
         popup_layout.add_widget(username_input)
         popup_layout.add_widget(email_input)
 
@@ -239,7 +239,7 @@ class UsersScreen(Screen):
     def get_selected_emails(self):
         users = self._get_selected_users()
         # user -> (username, email, creation_date)
-        return [user.field_data[1] for user in users]
+        return [user.get_data()[1] for user in users]
     
     def _get_selected_users(self):
         return self._selected_users

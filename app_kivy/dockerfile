@@ -1,24 +1,31 @@
-# Dockerfile
-FROM python:3.11-slim
+# Use an Ubuntu base image (20.04 is a good starting point)
+FROM ubuntu:20.04
 
-# Install dependencies, including mtdev
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-tk \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libmtdev-dev \
-    mtdev-tools \
-    x11-apps \
-    && rm -rf /var/lib/apt/lists/*
-    
-WORKDIR /app
+# Set noninteractive mode for apt-get
+ENV DEBIAN_FRONTEND=noninteractive
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies
+RUN dpkg --add-architecture i386 && \
+    apt-get update && apt-get install -y \
+      python3 \
+      python3-pip \
+      python3-setuptools \
+      git \
+      build-essential \
+      libssl-dev \
+      libffi-dev \
+      openjdk-8-jdk \
+      unzip \
+      zip \
+      zlib1g-dev
+
+# Upgrade pip and install buildozer
+RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
 
 COPY . .
 
-EXPOSE 5001
+# Set working directory inside the container
+WORKDIR /home/user/hostcwd
 
-CMD ["python", "main.py"]
+# Default command: show Buildozer help (can be overridden)
+CMD ["buildozer", "--help"]

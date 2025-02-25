@@ -60,8 +60,8 @@ class ComboBoxTable(GridLayout):
             self.add_widget(Label(text=header, bold=True))
         
         # Render rows
-        for row_data in rows:
-            for i, cell_data in enumerate(row_data):
+        for row in rows:
+            for i, cell_data in enumerate(row):
                 if isinstance(cell_data, list):
                     # If cell data should be a ComboBox
                     self.add_widget(ComboBoxCell(self.options, selected_value=cell_data[0]))
@@ -90,32 +90,34 @@ class SelectableRow(BoxLayout):
     #def __init__(self, key, value, date, select_callback, **kwargs):
     def __init__(self, *values, select_callback=None, **kwargs):
         super().__init__(orientation='horizontal', size_hint_y=None, height=ROW_HEIGHT, **kwargs)
-        #self.key = key
-        #self.value = value
-        #self.date = date
-        self.field_data = values[:-1]
-        self.field_date = values[-1]
-        if select_callback is None:
-            self.select_callback = lambda x: ()
+
+        if len(values) < 3:
+            self.data = values
+            self.date = ""
         else:
-            self.select_callback = select_callback
+            self.data = values[:-1]
+            self.date = values[-1]
+        self.values = values
+
+        self.select_callback = select_callback
         self.selected = False
 
-        # ✅ Round selection button
-        self.select_button = ToggleButton(
-            text="✔", size_hint=(None, None), width=40, height=40,
-            background_normal='',
-            background_color=[0.7, 0.7, 0.7, 1],
-            border=(20, 20, 20, 20)
-        )
-        self.select_button.bind(on_press=self.toggle_selection)
-        self.add_widget(self.select_button)
+        if self.select_callback:
+            # ✅ Round selection button
+            self.select_button = ToggleButton(
+                text="✔", size_hint=(None, None), width=40, height=40,
+                background_normal='',
+                background_color=[0.7, 0.7, 0.7, 1],
+                border=(20, 20, 20, 20)
+            )
+            self.select_button.bind(on_press=self.toggle_selection)
+            self.add_widget(self.select_button)
 
         # ✅ Row data fields
-        for data in self.field_data:
+        for data in self.data:
             text_input_widget = TextInput(text=data, readonly=True, size_hint_y=None, height=ROW_HEIGHT)
             self.add_widget(text_input_widget)
-        date_label = Label(text=str(self.field_date), size_hint_y=None, height=ROW_HEIGHT, color=(0, 0, 0, 1))
+        date_label = Label(text=str(self.date), size_hint_y=None, height=ROW_HEIGHT, color=(0, 0, 0, 1))
         self.add_widget(date_label)
 
         # ✅ Delete button
@@ -127,6 +129,15 @@ class SelectableRow(BoxLayout):
             background_color=[0.8, 0, 0, 0.8]
         )
         self.add_widget(self.delete_button)
+
+    def get_values(self):
+        return self.values
+    
+    def get_data(self):
+        return self.data
+
+    def get_date(self):
+        return self.date
 
     def toggle_selection(self, instance):
         """Handle row selection toggle."""

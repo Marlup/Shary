@@ -2,7 +2,6 @@ kivy
 kivymd
 python-dotenv
 flask
-buildozer
 pyjnius
 cython
-mysql
+buildozer

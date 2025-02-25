@@ -1,73 +1,61 @@
+import os
+import threading
+from dotenv import load_dotenv
 from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.recycleview import RecycleView
-from kivy.uix.recycleview.views import RecycleDataViewBehavior
-from kivy.uix.label import Label
-from kivy.uix.behaviors import ButtonBehavior
-from kivy.properties import ListProperty, BooleanProperty
+from kivy.uix.screenmanager import ScreenManager, Screen
+from kivymd.app import MDApp
+from flask import Flask, request, jsonify
 
-class SelectableRow(ButtonBehavior, BoxLayout, RecycleDataViewBehavior):
-    """Row that can be selected, highlighted, and deselected."""
-    selected = BooleanProperty(False)  # Tracks if the row is selected
-    index = None  # Index of the row in the RecycleView
+from source.user_creation_screen import get_user_creation_screen
+from source.login_screen import get_login_screen
+from source.fields_screen import get_fields_screen
+from source.users_screen import get_users_screen
+from source.requests_screen import get_requests_screen
 
-    def refresh_view_attrs(self, rv, index, data):
-        """Refresh row attributes and apply selection color if needed."""
-        self.index = index
-        self.selected = data.get('selected', False)
-        self.ids.label.text = data['text']
-        self.update_background()
-        return super().refresh_view_attrs(rv, index, data)
+load_dotenv(".env")
 
-    def on_press(self):
-        """Toggle row selection on click."""
-        self.selected = not self.selected
-        self.update_background()
-        self.parent.parent.toggle_selection(self.index, self.selected)
-
-    def update_background(self):
-        """Highlight the row if selected."""
-        self.ids.label.color = (1, 1, 1, 1) if self.selected else (0, 0, 0, 1)
-        self.canvas.before.clear()
-        with self.canvas.before:
-            from kivy.graphics import Color, Rectangle
-            Color(0, 0.5, 1, 0.3 if self.selected else 0)  # Blue highlight if selected
-            Rectangle(pos=self.pos, size=self.size)
-        self.bind(pos=self.update_background_size, size=self.update_background_size)
-
-    def update_background_size(self, *args):
-        """Ensure the background rectangle resizes with the widget."""
-        self.canvas.before.children[-1].pos = self.pos
-        self.canvas.before.children[-1].size = self.size
-
-
-class RowRecycleView(RecycleView):
-    """RecycleView that handles row selection and storage."""
-    selected_fields = ListProperty([])  # Stores selected row data
-
+class SharyScreenManager(ScreenManager):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.data = [{'text': f'Row {i + 1}', 'selected': False} for i in range(10)]
-
-    def toggle_selection(self, index, is_selected):
-        """Add or remove rows from the selected list based on selection."""
-        row_data = self.data[index]['text']
-        if is_selected:
-            if row_data not in self.selected_fields:
-                self.selected_fields.append(row_data)
+        
+        # Load screens
+        self.add_widget(get_user_creation_screen())
+        self.add_widget(get_login_screen())
+        self.add_widget(get_fields_screen())
+        self.add_widget(get_users_screen())
+        self.add_widget(get_requests_screen())
+        
+        if os.getenv("SHARY_USERNAME") and os.getenv("SHARY_PASSWORD"):
+            self.current = "login"
         else:
-            if row_data in self.selected_fields:
-                self.selected_fields.remove(row_data)
-        print(f"Selected fields: {self.selected_fields}")
+            self.current = "user_creation"
 
+def restrict_access():
+    allowed_ips = ['127.0.0.1']
+    if request.remote_addr not in allowed_ips:
+        return jsonify({"error": "Access forbidden"}), 403
 
-class MainLayout(BoxLayout):
-    """Main layout containing the selectable RecycleView."""
-    pass
+def open_file():
+    filename = request.args.get("filename")
+    if filename:
+        return jsonify({"message": f"Processing {filename}..."}), 200
+    else:
+        return jsonify({"error": "No filename provided."}), 400
 
-class RowSelectionApp(App):
+def run_flask():
+    backend_app = Flask(__name__)
+    backend_app.before_request(restrict_access)
+    backend_app.add_url_rule("/files/open", "open_file", open_file, methods=['GET'])
+    backend_app.run(host="127.0.0.1", port=5001)
+
+class SharyApp(MDApp):
     def build(self):
-        return MainLayout()
+        return SharyScreenManager()
 
-if __name__ == '__main__':
-    RowSelectionApp().run()
+def main():
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    SharyApp().run()
+
+if __name__ == "__main__":
+    main()

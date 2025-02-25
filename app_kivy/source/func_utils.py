@@ -8,6 +8,11 @@ import csv
 import yaml
 from io import StringIO
 
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+
 def load_user_credentials():
     load_dotenv("../.env")
     sender_email = os.getenv("SHARY_USER_EMAIL")  # Replace with your email
@@ -15,15 +20,16 @@ def load_user_credentials():
     
     return sender_email, sender_password
 
-def build_email_string_body(sender, recipients, subject, filename, file_format, rows):
+def build_email_html_body(sender, recipients, subject, filename, file_format, rows, on_request=False):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
-    msg = MIMEMultipart()
 
     # Build the file as string
-    if file_format == "json_req":
+    if on_request:
+        message_keys = parsed_keys_as_vertical_string(rows)
         file_to_send = get_selected_fields_as_req_json(rows, sender)
     else:
+        message_keys = parsed_fields_as_vertical_string(rows)
         file_to_send = build_file_from_selected_fields(rows, file_format)
     
     if file_to_send is None:
@@ -31,56 +37,27 @@ def build_email_string_body(sender, recipients, subject, filename, file_format, 
     
     # Build the body and the hyperlink using HTML
     # shary_uri = "shary://files/open?filename=file_path.json"
-    message_keys = parsed_table_as_vertical_string(rows)
-    shary_uri = f"http://files/open?filename=./{filename}"
-
-    body = (
-        "Hello,\n\n"
-        "You are receiving this email from Shary.\n"
-        "Shary is an application that allows users to share structured data easily.\n\n"
-        f"{shary_uri}"
-        "Fields:\n"
-        f"{message_keys}"
-        "\n\nBest regards,\nShary Team"
-    )
-    
-    # Create the email
-    msg = EmailMessage()
-    msg["From"] = sender
-    msg["To"] = ", ".join(recipients)
-    msg["Subject"] = subject
-    msg.set_content(MIMEText(body, "html"))
-    msg.add_attachment(file_to_send, filename=filename, subtype=file_format)
-    return msg
-
-def build_email_html_body(sender, recipients, subject, filename, file_format, rows):
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-
-    # Build the file as string
-    print(f"file_format : {file_format}")
-    if file_format == "json_req":
-        file_to_send = get_selected_fields_as_req_json(rows, sender)
-    else:
-        file_to_send = build_file_from_selected_fields(rows, file_format)
-    
-    if file_to_send is None:
-        return "bad-format"
-    
-    # Build the body and the hyperlink using HTML
-    # shary_uri = "shary://files/open?filename=file_path.json"
-    message_keys = parsed_table_as_vertical_string(rows)
     shary_uri = f"http://localhost:5001/files/open?filename=./{filename}"
     body = f"""
 <html>
 <body>
     <p>
+        Hello,
+
+        You are receiving this email from Shary.\n
+        Shary is an application that allows users to share structured data easily.\n\n
+        {shary_uri}
+
+        Fields:\n
+        {message_keys}
+
         <a href="{shary_uri}" target="_blank">Click to open Shary and visualize the data</a>
+
+        \n\nBest regards,\nShary Team
     </p>
 </body>
 </html>
 """
-
     # Create the email
     #msg = MIMEMultipart()
     msg = EmailMessage()
@@ -100,6 +77,7 @@ def send_email(sender_email, sender_password, message):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.send_message(message)
+            print("")
         return ""
     except Exception as e:
         return e
@@ -121,18 +99,18 @@ def get_selected_fields_as_json(rows):
     json_fields = {}
     
     for row in rows:
-        key, value = row.field_data
+        key, value = row.get_data()
         json_fields[key] = value
     
     return json.dumps(json_fields, indent=4)
 
 def get_selected_fields_as_req_json(rows, sender):
     """ Get fields as a JSON with request format. """
-    json_fields = {}
+    json_fields = {"keys": []}
     
     for row in rows:
-        key, value = row.field_data
-        json_fields[key] = value
+        key = row.get_data()[0]
+        json_fields["keys"].append(key)
     json_fields["mode"] = "request"
     json_fields["sender"] = sender
     
@@ -143,7 +121,7 @@ def get_selected_fields_as_xml(rows):
     root = ET.Element("Fields")
 
     for row in rows:
-        key, value = row.field_data
+        key, value = row.get_data()
         field_element = ET.SubElement(root, "Field", key=key)
         field_element.text = value
 
@@ -158,7 +136,7 @@ def get_selected_fields_as_csv(rows):
     writer.writerow(["Key", "Value"])
 
     for row in rows:
-        key, value = row.field_data
+        key, value = row.get_data()
         writer.writerow([key, value])
 
     return output.getvalue()
@@ -168,20 +146,29 @@ def get_selected_fields_as_yaml(rows):
     yaml_fields = {}
     
     for row in rows:
-        key, value = row.field_data
+        key, value = row.get_data()
         yaml_fields[key] = value
 
     return yaml.dump(yaml_fields, 
                      default_flow_style=False,
                      allow_unicode=True)
 
-def parsed_table_as_vertical_string(rows):
+def parsed_fields_as_vertical_string(field_rows):
     keys_values = []
-    for row in rows:
-        key, value = row.field_data
+    for field_row in field_rows:
+        key, value = field_row.get_data()
         keys_values.append(f"- {key}: {value}")
     
     parsed_json = "\n\t" + "\n\t".join(keys_values)
+    return parsed_json
+
+def parsed_keys_as_vertical_string(key_rows):
+    keys = []
+    for key_row in key_rows:
+        key = key_row.get_data()
+        keys.append(f"- {key}")
+    
+    parsed_json = "\n\t" + "\n\t".join(keys)
     return parsed_json
 
 def make_base_tables(conn=None):
@@ -218,100 +205,26 @@ def make_base_tables(conn=None):
         conn.commit()
         conn.close()
 
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDRaisedButton
-from kivy.lang.builder import Builder
+def information_panel(panel_name, message):
+    return_layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
 
-def build_success_dialog():
-    return Builder.load_string('''
-BoxLayout:
-  orientation: 'vertical'
-  MDRaisedButton:
-    text: "Email Success"
-    on_release: app.show_success_dialog()
-                               '''
-                               )
+    # Message label
+    message_label = Label(text=message, halign="center", valign="middle")
+    # Bind the label size to its text_size so the text is centered properly
+    message_label.bind(size=message_label.setter("text_size"))
 
-def show_success_dialog():
-    dialog = MDDialog(
-        title="Success",
-        text="Fields sent successfully!",
-        buttons=[
-            MDRaisedButton(
-                text="OK",
-                on_release=lambda x: dialog.dismiss()
-            ),
-        ],
-    )
-    dialog.open()
+    # Message ok button
+    message_ok_button = Button(text="Ok", 
+                                on_press=lambda _: message_popup.dismiss(),
+                                size_hint=(None, None),
+                                size=(100, 44), 
+                                halign="center"
+                                )
+    
+    # Add widgets
+    return_layout.add_widget(message_label)
+    return_layout.add_widget(message_ok_button)
 
-# Warnings
-def build_no_fields_warning_dialog():
-    return Builder.load_string('''
-BoxLayout:
-  orientation: 'vertical'
-  MDRaisedButton:
-    text: "No Fields Selected"
-    on_release: app.show_no_fields_warning_dialog()
-                               '''
-                               )
-
-def show_no_fields_warning_dialog():
-    dialog = MDDialog(
-        title="Warning",
-        text="Please select at least one field to send.",
-        buttons=[
-            MDRaisedButton(
-                text="OK",
-                on_release=lambda x: dialog.dismiss()
-            ),
-        ],
-    )
-    dialog.open()
-
-def build_format_warning_dialog():
-    return Builder.load_string('''
-BoxLayout:
-  orientation: 'vertical'
-  MDRaisedButton:
-    text: "Bad Format"
-    on_release: app.show_format_warning_dialog()
-                               '''
-                               )
-
-def show_format_warning_dialog():
-    dialog = MDDialog(
-        title="Warning",
-        text="Unsupported format.",
-        buttons=[
-            MDRaisedButton(
-                text="OK",
-                on_release=lambda x: dialog.dismiss()
-            ),
-        ],
-    )
-    dialog.open()
-
-# Errors
-def build_email_error_dialog():
-    return Builder.load_string('''
-BoxLayout:
-  orientation: 'vertical'
-  MDRaisedButton:
-    text: "Email Error"
-    on_release: app.show_email_error_dialog()
-                               '''
-                               )
-
-def show_email_error_dialog():
-    dialog = MDDialog(
-        title="Error at email send",
-        text="Unsupported format.",
-        buttons=[
-            MDRaisedButton(
-                text="OK",
-                on_release=lambda x: dialog.dismiss()
-            ),
-        ],
-    )
-    dialog.open()
+    # Message popup
+    message_popup = Popup(title=panel_name, content=return_layout, size_hint=(0.5, 0.4))
+    message_popup.open()

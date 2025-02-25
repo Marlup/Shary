@@ -1,3 +1,10 @@
-/app_pyside6
-.env
+/*__pycache__
+main2.py
+app_pyside6
 shary_demo
+app
+venv
+old
+.env
+.dockerignore
+*/__pycache__/*
