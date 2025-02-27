@@ -37,7 +37,7 @@ class LoginScreen(Screen):
         username = self.ids.username_input.text.strip()
         password = self.ids.password_input.text.strip()
 
-        if username == os.getenv("SHARY_USERNAME") and password == os.getenv("SHARY_PASSWORD"):
+        if username == os.getenv("SHARY_ROOT_USERNAME") and password == os.getenv("SHARY_ROOT_PASSWORD"):
             # Remove the login screen after validating credentials and 
             # pressing the login button
             self.manager.current = "fields"

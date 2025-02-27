@@ -1,4 +1,6 @@
 from kivymd.uix.screen  import MDScreen
+from kivymd.uix.boxlayout import MDBoxLayout
+
 import sqlite3
 
 from source.constant import (
@@ -15,6 +17,28 @@ from source.query_schemas import (
     DELETE_FIELD_BY_KEY,
     INSERT_FIELD,
 )
+
+class Utils():
+    @staticmethod
+    def remove_table(func):
+        """Removes the table from 'table_container' layout."""
+        def wrapper(self, *args, **kwargs):
+            func_results = func(self, *args, **kwargs)
+            self.ids.table_container.remove_widget(self.table)
+            return func_results
+        return wrapper
+
+class AddUser(MDBoxLayout):
+    pass
+
+class AddRequestField(MDBoxLayout):
+    pass
+
+class AddField(MDBoxLayout):
+    pass
+
+class SendEmailDialog(MDBoxLayout):
+    pass
 
 class DataManager():
     def __init__(self):
@@ -36,7 +60,7 @@ class DataManager():
 
     def delete_user(self, username):
         cursor = self.db_connection.cursor()
-        cursor.execute(DELETE_USER_BY_USERNAME, (username,))
+        cursor.execute(DELETE_USER_BY_USERNAME, (username, ))
         self.db_connection.commit()
         cursor.close()
 
@@ -46,9 +70,9 @@ class DataManager():
         self.db_connection.commit()
         cursor.close()
 
-    def add_field(self, key, value, custom_name=""):
+    def add_field(self, key, value, alias_key=""):
         cursor = self.db_connection.cursor()
-        cursor.execute(INSERT_FIELD, (key, value, custom_name))
+        cursor.execute(INSERT_FIELD, (key, value, alias_key))
         self.db_connection.commit()
         cursor.close()
 

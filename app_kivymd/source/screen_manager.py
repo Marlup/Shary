@@ -27,7 +27,7 @@ class SharyScreenManager(ScreenManager):
         self.add_widget(get_users_screen())
         self.add_widget(get_requests_screen())
         
-        if os.getenv("SHARY_USERNAME") and os.getenv("SHARY_PASSWORD"):
+        if os.getenv("SHARY_ROOT_USERNAME") and os.getenv("SHARY_ROOT_PASSWORD"):
             Logger.info("Going to login screen")
             self.current = "login"
         else:

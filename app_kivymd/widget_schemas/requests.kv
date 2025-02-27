@@ -24,6 +24,11 @@
             halign: "center"
 
             MDRaisedButton:
+                text: "Send Request"
+                icon: "email"
+                on_release: root.show_send_email_dialog()
+
+            MDRaisedButton:
                 text: "Remove Request Field"
                 icon:"minus"
                 on_release: root._delete_req_fields()

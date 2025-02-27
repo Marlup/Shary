@@ -13,6 +13,9 @@ class UserCreationScreen(Screen):
         super().__init__(name="user_creation", **kwargs)
         make_base_tables()
 
+    def validate_email(self, email):
+        pass
+    
     def validate_password(self, password):
         if len(password) < 8:
             return "Password must be at least 8 characters long."
@@ -27,9 +30,14 @@ class UserCreationScreen(Screen):
         return None
 
     def create_user(self):
+        email = self.ids.email_input.text.strip()
         username = self.ids.username_input.text.strip()
         password = self.ids.password_input.text
         confirm_password = self.ids.confirm_password_input.text
+
+        if not email:
+            self.show_dialog("Invalid Input", "Email cannot be empty.")
+            return
 
         if not username:
             self.show_dialog("Invalid Input", "Username cannot be empty.")
@@ -44,13 +52,13 @@ class UserCreationScreen(Screen):
             self.show_dialog("Weak Password", password_error)
             return
 
-        set_key(".env", "SHARY_USERNAME", username)
-        set_key(".env", "SHARY_PASSWORD", password)
+        set_key(".env", "SHARY_ROOT_EMAIL", email)
+        set_key(".env", "SHARY_ROOT_USERNAME", username)
+        set_key(".env", "SHARY_ROOT_PASSWORD", password)
 
         self.show_dialog("Success", "User created successfully!")
 
         # Remove the user creation screen after successful registration
-        self.manager.remove_widget(self)
         self.manager.current = "login"
 
     def show_dialog(self, title, message):
@@ -61,5 +69,5 @@ class UserCreationScreen(Screen):
         load_dotenv(".env")
 
 def get_user_creation_screen():
-    Builder.load_file("views/user_creation.kv")
+    Builder.load_file("widget_schemas/user_creation.kv")
     return UserCreationScreen()

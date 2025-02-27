@@ -3,7 +3,6 @@ from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import SlideTransition
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.toast import toast
 from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.dialog import MDDialog
@@ -11,7 +10,6 @@ from kivy.metrics import dp
 from kivy.logger import Logger
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.boxlayout import MDBoxLayout
 
 from source.func_utils import (
     load_user_credentials,
@@ -20,65 +18,71 @@ from source.func_utils import (
     information_panel
 )
 
-from source.query_schemas import (
-    SELECT_ALL_FIELDS,
-    DELETE_FIELD_BY_KEY,
-    INSERT_FIELD,
-    
-)
 from source.constant import (
-    ROW_HEIGHT,
     FILE_FORMATS,
     MSG_DEFAULT_SEND_FILENAME
 )
 
 from source.class_utils import (
-    EmailHandler,
+    Utils,
+    AddField,
+    SendEmailDialog
 )
-
-class AddField(MDBoxLayout):
-    pass
-
-class SendEmailDialog(MDBoxLayout):
-    pass
 
 class FieldsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(name="fields", **kwargs)
-        self._selected_fields = []
         self.table = None
         self.dialog = Builder.load_file("widget_schemas/add_field_dialog.kv")  # Load the dialog definition
-        self.email_dialog = Builder.load_file("widget_schemas/add_field_dialog.kv")  # Load the dialog definition
-
-    def update_selected_fields(self, instance, row_data):
-        if row_data in self._selected_fields:
-            self._selected_fields.remove(row_data)
-        else:
-            self._selected_fields.append(row_data)
+        self.email_dialog = Builder.load_file("widget_schemas/send_email_dialog.kv")  # Load the dialog definition
 
     def _delete_fields(self):
-        if not self._selected_fields:
+        checked_rows = self.table.get_row_checks()
+
+        if not checked_rows:
             return
         
-        if len(self._selected_fields) == 1:
+        if len(checked_rows) == 1:
+            key = checked_rows[0][0]
             self.manager \
                 .data_manager \
-                .delete_field(self._selected_fields)
+                .delete_field(key)
         else:
+            keys = self._get_cells_from_checked_rows(cell_as_tuple=True)
             self.manager \
                 .data_manager \
-                .delete_fields(self._selected_fields)
-        self._load_users_from_db()
+                .delete_fields(keys)
+        
+        self._remove_rows_from_checked_rows()
+    
+    def _get_cells_from_checked_rows(self, index=0, cell_as_tuple=False):
+        rows = self.table.get_row_checks()
 
-    def _add_field(self, key, value):
-        self.manager.data_manager.add_field(key, value)
-        self._load_fields_from_db()
+        cells = [
+            (r[index], ) if cell_as_tuple else r[index] for r in rows
+            ]
+        print(f"cells - {cells}")
+        return cells
+
+    def _remove_rows_from_checked_rows(self):
+        rows = self.table.get_row_checks()
+        if not rows:
+            return
+        for row in rows:
+            Logger.critical(f"\n self.table - {self.table.row_data}")
+            Logger.critical(f"\n row - {row}")
+            self.table.remove_row(tuple(row))
+
+    def _add_field(self, key, value, alias_key=""):
+        self.manager.data_manager.add_field(key, value, alias_key)
+        self.table.add_row((key, value, alias_key))
 
     def _load_fields_from_db(self):
-        records = self.manager.data_manager.load_fields_from_db()
-
+        #self.ids.table_container.remove_widget(self.table)
         if self.table:
-            self.ids.table_container.remove_widget(self.table)
+            return
+        
+        records = self.manager.data_manager.load_fields_from_db()
 
         self.table = MDDataTable(
             size_hint=(1, 0.8),
@@ -88,19 +92,16 @@ class FieldsScreen(MDScreen):
                 ("Key", dp(30)),
                 ("Value", dp(30)),
                 ("Date", dp(30)),
-                ("Actions", dp(20)),
             ],
             row_data=[
                 (
                     record[0],
                     record[1],
                     record[2],
-                    "X"  # Unicode for a cross symbol (X) for delete
                 )
                 for record in records
             ],
         )
-        self.table.bind(on_check_press=self.update_selected_fields)
         self.ids.table_container.add_widget(self.table)
 
     def show_add_field_dialog(self):
@@ -109,8 +110,8 @@ class FieldsScreen(MDScreen):
             type="custom",
             content_cls=AddField(size_hint_y=None, height="200dp"),  # Adjust height here
             buttons=[
-                MDRaisedButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
-                MDRaisedButton(text="ADD", on_release=self.add_field_from_popup),
+                MDRaisedButton(text="CANCEL", on_release=lambda _: self.dialog.dismiss()),
+                MDRaisedButton(text="ADD", on_release=lambda _: self.add_field_from_popup()),
             ],
         )
         self.dialog.open()
@@ -134,15 +135,15 @@ class FieldsScreen(MDScreen):
                 type="custom",
                 content_cls=SendEmailDialog(size_hint_y=None, height="200dp"),
                 buttons=[
-                    MDRaisedButton(text="Cancel", on_release=lambda x: self.email_dialog.dismiss()),
-                    MDRaisedButton(text="Send", on_release=self.send_email_from_dialog),
+                    MDRaisedButton(text="Cancel", on_release=lambda _: self.email_dialog.dismiss()),
+                    MDRaisedButton(text="Send", on_release=lambda _: self.send_email_from_dialog()),
             ],
             )
-            self._init_dropdown_menu()
+            #self._init_menu_formats()
 
         self.email_dialog.open()
 
-    def _init_dropdown_menu(self):
+    def _init_menu_formats(self):
         menu_items = [
             {
                 "text": f"{format}",
@@ -151,7 +152,7 @@ class FieldsScreen(MDScreen):
             for format in FILE_FORMATS
         ]
         print(f"self.email_dialog.content_cls - {self.email_dialog.content_cls.ids}")
-        self.dropdown_menu = MDDropdownMenu(
+        self.menu_formats = MDDropdownMenu(
             caller=self.email_dialog.content_cls.ids.file_format_dropdown,
             items=menu_items,
             width_mult=4,
@@ -159,15 +160,20 @@ class FieldsScreen(MDScreen):
 
     def set_file_format(self, file_format):
         self.email_dialog.content_cls.ids.file_format_dropdown.text = file_format
-        self.dropdown_menu.dismiss()
+        self.menu_formats.dismiss()
 
     def send_email_from_dialog(self):
+        # Get Data
         dialog_ids = self.email_dialog.content_cls.ids
         filename = dialog_ids.filename_input.text.strip()
-        file_format = dialog_ids.file_format_dropdown.text.strip()
+        file_format = "json" #dialog_ids.file_format_dropdown.text.strip()
+        rows_to_send = self.table.get_row_checks()
+        print(rows_to_send)
+        sender_email, sender_password = load_user_credentials()
+        subject = f"Shary message with {len(rows_to_send)} fields"
 
+        # Get file metadata
         if not filename:
-            sender_email, _ = load_user_credentials()
             sender_name = sender_email.split("@")[0]
             filename = f"{MSG_DEFAULT_SEND_FILENAME}{sender_name}"
         filename += f".{file_format}"
@@ -175,24 +181,26 @@ class FieldsScreen(MDScreen):
         if file_format not in FILE_FORMATS:
             information_panel("Action: sending email", "Invalid file format.")
             return
-
-        recipients = self.parent_screen.manager.get_screen("users").get_selected_emails()
+        
+        # Get recipients (email)
+        recipients = self.manager.get_screen("users").get_checked_emails(index=1)
         if not recipients:
-            information_panel("Action: sending email", "Select at least one external user to send to.")
+            information_panel("Action: sending email", "Select at least one external user.")
             return
-
-        sender_email, sender_password = load_user_credentials()
-        subject = f"Shary message with {len(self.parent_screen._selected_fields)} fields"
+        
+        # Build the email instance
         message = build_email_html_body(
             sender_email,
             recipients,
             subject,
             filename,
             file_format,
-            self.parent_screen._selected_fields,
+            rows_to_send,
         )
 
+        # Send the email
         return_message = send_email(sender_email, sender_password, message)
+        
         if return_message == "":
             information_panel("Action: sending email", "Email sent successfully")
         elif return_message == "bad-format":
@@ -209,7 +217,7 @@ class FieldsScreen(MDScreen):
     def go_to_users_screen(self):
         self.manager.transition = SlideTransition(direction="left", duration=0.4)
         self.manager.current = "users"
-
+    
     def on_enter(self):
         self._load_fields_from_db()
 

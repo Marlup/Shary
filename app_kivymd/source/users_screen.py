@@ -5,57 +5,70 @@ from kivymd.uix.button import MDRaisedButton
 from kivymd.toast import toast
 from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivy.uix.screenmanager import SlideTransition
 from kivy.metrics import dp
 from kivy.logger import Logger
 
-import sqlite3
-
-from source.query_schemas import (
-    SELECT_ALL_USERS,
-    DELETE_USER_BY_USERNAME,
-    INSERT_USER
+from source.class_utils import (
+    AddUser
 )
-
-class AddUser(MDBoxLayout):
-    pass
 
 class UsersScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(name="users", **kwargs)
-        self._selected_users = []
         self.table = None
         self.dialog = Builder.load_file("widget_schemas/add_user_dialog.kv")  # Load the dialog definition
 
-    def update_selected_users(self, instance, row_data):
-        if row_data in self._selected_users:
-            self._selected_users.remove(row_data)
-        else:
-            self._selected_users.append(row_data)
-
     def _delete_users(self):
-        if not self._selected_users:
-            return
-        if len(self._selected_users) == 1:
-            self.manager \
-                .data_manager \
-                .delete_user(self._selected_users)
-        else:
-            self.manager \
-                .data_manager \
-                .delete_users(self._selected_users)
-        self._load_users_from_db()
+        checked_rows = self.get_safe_row_checks()
 
-    def _add_user(self, username, email):
-        self.manager.data_manager.add_user(username, email)
-        self._load_users_from_db()
+        if not checked_rows:
+            return
+        
+        if len(checked_rows) == 1:
+            username = checked_rows[0][0]
+            self.manager \
+                .data_manager \
+                .delete_user(username)
+        else:
+            usernames = self._get_cells_from_checked_rows(cell_as_tuple=True)
+            self.manager \
+                .data_manager \
+                .delete_users(usernames)
+        
+        self._remove_rows_from_checked_rows()
+    
+    def _get_cells_from_checked_rows(self, index=0, cell_as_tuple=False):
+        rows = self.get_safe_row_checks()
+        if not rows:
+            return
+
+        cells = [
+            (r[index], ) if cell_as_tuple else r[index] for r in rows
+            ]
+        print(f"cells - {cells}")
+        return cells
+
+    def _remove_rows_from_checked_rows(self):
+        rows = self.get_safe_row_checks()
+        if not rows:
+            return
+        
+        for row in rows:
+            Logger.critical(f"\n self.table - {self.table.row_data}")
+            Logger.critical(f"\n row - {row}")
+            self.table.remove_row(tuple(row))
+
+    def _add_user(self, username, email, phone=0, phone_ext=0):
+        self.manager.data_manager.add_user(username, email, phone, phone_ext)
+        self.table.add_row((username, email, ""))
 
     def _load_users_from_db(self):
-        records = self.manager.data_manager.load_users_from_db()
-
+        #self.ids.table_container.remove_widget(self.table)
         if self.table:
-            self.ids.table_container.remove_widget(self.table)
+            return
+        
+        records = self.manager.data_manager.load_users_from_db()
 
         self.table = MDDataTable(
             size_hint=(1, 0.8),
@@ -64,7 +77,7 @@ class UsersScreen(MDScreen):
             column_data=[
                 ("Username", dp(30)),
                 ("Email", dp(40)),
-                ("Phone", dp(30)),
+                ("Creation Date", dp(30)),
             ],
             row_data=[
                 (
@@ -75,7 +88,6 @@ class UsersScreen(MDScreen):
                 for record in records
             ],
         )
-        self.table.bind(on_check_press=self.update_selected_users)
         self.ids.table_container.add_widget(self.table)
     
     def show_add_user_dialog(self):
@@ -85,20 +97,20 @@ class UsersScreen(MDScreen):
             content_cls=AddUser(size_hint_y=None, height="200dp"),  # Adjust height here
             buttons=[
                 MDRaisedButton(text="CANCEL", on_release=lambda x: self.dialog.dismiss()),
-                MDRaisedButton(text="ADD", on_release=self.add_user_from_popup),
+                MDRaisedButton(text="ADD", on_release=lambda _: self.add_user_from_popup()),
             ],
         )
-
         self.dialog.open()
 
     def add_user_from_popup(self, *args):
-        Logger.info(f"ids for root {self.ids}")
-        Logger.info(f"ids for root.dialog {self.dialog.ids}")
-        Logger.info(f"ids for root.dialog.content_cls {self.dialog.content_cls.ids}")
+        #Logger.info(f"ids for root {self.ids}")
+        #Logger.info(f"ids for root.dialog {self.dialog.ids}")
+        #Logger.info(f"ids for root.dialog.content_cls {self.dialog.content_cls.ids}")
 
         dialog_ids = self.dialog.content_cls.ids
         username = dialog_ids.username_input.text.strip()
         email = dialog_ids.email_input.text.strip()
+        # TODO add phone and extension
 
         if username and email:
             self._add_user(username, email)
@@ -107,9 +119,20 @@ class UsersScreen(MDScreen):
         else:
             toast("Both Username and Email are required.")
     
+    def get_safe_row_checks(self):
+        if self.table is None:
+            return []
+        if self.table.get_row_checks():
+            return self.table.get_row_checks()
+        return []
+
+    def get_checked_emails(self, index=0):
+        return self._get_cells_from_checked_rows(index)
+    
     def go_to_fields_screen(self):
         self.manager.transition = SlideTransition(direction="right", duration=0.4)
         self.manager.current = "fields"
+    
     def go_to_requests_screen(self):
         self.manager.transition = SlideTransition(direction="left", duration=0.4)
         self.manager.current = "requests"

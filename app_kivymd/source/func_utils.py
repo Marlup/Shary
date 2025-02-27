@@ -15,7 +15,7 @@ from kivy.uix.popup import Popup
 
 def load_user_credentials():
     load_dotenv("../.env")
-    sender_email = os.getenv("SHARY_USER_EMAIL")  # Replace with your email
+    sender_email = os.getenv("SHARY_ROOT_EMAIL")  # Replace with your email
     sender_password = "ugtt iggn nnni dchj"  # Replace with your app password
     
     return sender_email, sender_password
@@ -98,8 +98,7 @@ def get_selected_fields_as_json(rows):
     """ Get selected fields as a JSON dictionary. """
     json_fields = {}
     
-    for row in rows:
-        key, value = row.get_data()
+    for key, value, *_ in rows:
         json_fields[key] = value
     
     return json.dumps(json_fields, indent=4)
@@ -108,9 +107,9 @@ def get_selected_fields_as_req_json(rows, sender):
     """ Get fields as a JSON with request format. """
     json_fields = {"keys": []}
     
-    for row in rows:
-        key = row.get_data()[0]
+    for key, *_ in rows:
         json_fields["keys"].append(key)
+    
     json_fields["mode"] = "request"
     json_fields["sender"] = sender
     
@@ -120,8 +119,7 @@ def get_selected_fields_as_xml(rows):
     """ Get selected fields as an XML string. """
     root = ET.Element("Fields")
 
-    for row in rows:
-        key, value = row.get_data()
+    for key, value, *_ in rows:
         field_element = ET.SubElement(root, "Field", key=key)
         field_element.text = value
 
@@ -135,8 +133,7 @@ def get_selected_fields_as_csv(rows):
     # Writing header
     writer.writerow(["Key", "Value"])
 
-    for row in rows:
-        key, value = row.get_data()
+    for key, value, *_ in rows:
         writer.writerow([key, value])
 
     return output.getvalue()
@@ -145,27 +142,24 @@ def get_selected_fields_as_yaml(rows):
     """ Get selected fields as a YAML dictionary. """
     yaml_fields = {}
     
-    for row in rows:
-        key, value = row.get_data()
+    for key, value, *_ in rows:
         yaml_fields[key] = value
 
     return yaml.dump(yaml_fields, 
                      default_flow_style=False,
                      allow_unicode=True)
 
-def parsed_fields_as_vertical_string(field_rows):
+def parsed_fields_as_vertical_string(rows):
     keys_values = []
-    for field_row in field_rows:
-        key, value = field_row.get_data()
+    for key, value, *_ in rows:
         keys_values.append(f"- {key}: {value}")
     
     parsed_json = "\n\t" + "\n\t".join(keys_values)
     return parsed_json
 
-def parsed_keys_as_vertical_string(key_rows):
+def parsed_keys_as_vertical_string(rows):
     keys = []
-    for key_row in key_rows:
-        key = key_row.get_data()
+    for key, *_ in rows:
         keys.append(f"- {key}")
     
     parsed_json = "\n\t" + "\n\t".join(keys)
