@@ -1,0 +1,13 @@
+# --- views/add_request_dialog.kv ---
+#:kivy 2.3.0
+
+<AddRequestField@MDBoxLayout>:
+    orientation: "vertical"
+    spacing: dp(10)
+    padding: dp(20)
+
+    MDTextField:
+        id: key_input
+        hint_text: "Key"
+        helper_text: "Enter the key name for the request field"
+        helper_text_mode: "on_focus"

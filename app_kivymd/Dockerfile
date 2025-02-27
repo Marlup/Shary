@@ -1,0 +1,31 @@
+# Use an Ubuntu base image (20.04 is a good starting point)
+FROM ubuntu:20.04
+
+# Set noninteractive mode for apt-get
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN dpkg --add-architecture i386 && \
+    apt-get update && apt-get install -y \
+      python3 \
+      python3-pip \
+      python3-setuptools \
+      git \
+      build-essential \
+      libssl-dev \
+      libffi-dev \
+      openjdk-8-jdk \
+      unzip \
+      zip \
+      zlib1g-dev
+
+# Upgrade pip and install buildozer
+RUN pip3 install --upgrade pip && pip3 install -r requirements.txt
+
+COPY . .
+
+# Set working directory inside the container
+WORKDIR /home/user/hostcwd
+
+# Default command: show Buildozer help (can be overridden)
+CMD ["buildozer", "--help"]
