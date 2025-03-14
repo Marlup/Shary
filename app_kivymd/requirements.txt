@@ -6,3 +6,10 @@ flask
 pyjnius
 cython
 buildozer
+pytest
+cryptography
+aiortc
+qrcode
+pyzbar
+pillow
+https://github.com/kivymd/KivyMD/archive/master.zip

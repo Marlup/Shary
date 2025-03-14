@@ -5,6 +5,10 @@ from source.screen_manager import SharyScreenManager
 from source.backend import run_flask
 
 class SharyApp(MDApp):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.title = "Shary"
+
     def build(self):
         return SharyScreenManager()
 

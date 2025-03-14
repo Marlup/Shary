@@ -5,11 +5,13 @@ from dotenv import load_dotenv
 
 from source.user_creation_screen import get_user_creation_screen
 from source.login_screen import get_login_screen
-from source.fields_screen import get_fields_screen
-from source.users_screen import get_users_screen
-from source.requests_screen import get_requests_screen
+from source.field_screen import get_field_screen
+from source.user_screen import get_user_screen
+from source.request_screen import get_request_screen
+from source.file_visualizer_screen import get_file_visualizer_screen
 from source.class_utils import DataManager
 from kivy.logger import Logger
+from source.class_utils import FirebaseManager  # Import the manager class
 
 load_dotenv(".env")
 
@@ -20,12 +22,18 @@ class SharyScreenManager(ScreenManager):
         Logger.info(f"Current screen is {self.current_screen}")
 
         self.data_manager = DataManager()
+        self.firebase_manager = FirebaseManager(self) # Initialize Firebase manager
+
+        # Add test session requests (example)
+        self.firebase_manager.add_request("session_123", "my_secret_key")
+        self.firebase_manager.add_request("session_456", "another_secret")
 
         # Load rest of the screens
         self.add_widget(get_login_screen())
-        self.add_widget(get_fields_screen())
-        self.add_widget(get_users_screen())
-        self.add_widget(get_requests_screen())
+        self.add_widget(get_field_screen())
+        self.add_widget(get_user_screen())
+        self.add_widget(get_request_screen())
+        self.add_widget(get_file_visualizer_screen())
         
         if os.getenv("SHARY_ROOT_USERNAME") and os.getenv("SHARY_ROOT_PASSWORD"):
             Logger.info("Going to login screen")
@@ -37,4 +45,3 @@ class SharyScreenManager(ScreenManager):
         
         Logger.info(f"Current screen is {self.current_screen}")
         Logger.info(f"Screen names ({len(self.screen_names)}) are {self.screen_names}")
-        

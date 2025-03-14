@@ -2,8 +2,16 @@ __pycache__
 main2.py
 app_pyside6
 shary_demo
-app
 venv
 old
 .env
 .dockerignore
+# Ignore all directories (including top-level ones)
+*/
+
+# Ignore all files inside directories
+**/*
+
+# But do not ignore directories containing "_kivymd"
+!**/_kivymd/
+!**/_kivymd/**
