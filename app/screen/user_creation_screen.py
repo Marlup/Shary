@@ -1,34 +1,21 @@
-<<<<<<<< Updated upstream:app_kivymd/source/user_creation_screen.py
 # --- source/user_creation_screen.py ---
 import re
 import os
-========
 # --- common/user_creation_screen.py ---
 import re
->>>>>>>> Stashed changes:app/screen/user_creation_screen.py
 from dotenv import load_dotenv, set_key
 from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.dialog import MDDialog
-<<<<<<<< Updated upstream:app_kivymd/source/user_creation_screen.py
-from source.func_utils import make_base_tables
-========
 
 from core.constant import (
     SCREEN_NAME_LOGIN,
     SCREEN_NAME_USER_CREATION
 )
->>>>>>>> Stashed changes:app/screen/user_creation_screen.py
 
 class UserCreationScreen(Screen):
-
     def __init__(self, **kwargs):
-<<<<<<<< Updated upstream:app_kivymd/source/user_creation_screen.py
-        super().__init__(name="user_creation", **kwargs)
-        make_base_tables()
-========
         super().__init__(name=SCREEN_NAME_USER_CREATION, **kwargs)
->>>>>>>> Stashed changes:app/screen/user_creation_screen.py
 
     def validate_email(self, email):
         pass
@@ -76,23 +63,8 @@ class UserCreationScreen(Screen):
         self.show_dialog("Success", "User created successfully!")
 
         # Remove the user creation screen after successful registration
-<<<<<<<< Updated upstream:app_kivymd/source/user_creation_screen.py
-        self.manager.current = "login"
-========
         self.manager.current = SCREEN_NAME_LOGIN
->>>>>>>> Stashed changes:app/screen/user_creation_screen.py
 
     def show_dialog(self, title, message):
         dialog = MDDialog(title=title, text=message)
         dialog.open()
-
-    def on_enter(self):
-<<<<<<<< Updated upstream:app_kivymd/source/user_creation_screen.py
-        load_dotenv(".env")
-
-def get_user_creation_screen():
-    Builder.load_file("widget_schemas/user_creation.kv")
-    return UserCreationScreen()
-========
-        load_dotenv(".env")
->>>>>>>> Stashed changes:app/screen/user_creation_screen.py
