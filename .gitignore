@@ -1,1 +1,9 @@
-/app_pyside6
+__pycache__
+main2.py
+app_pyside6
+app_demos/*
+shary_demo
+venv
+old
+.env
+.dockerignore

@@ -1,0 +1,11 @@
+Cool! Now I need a similar enum, but with more contextualized 
+and abstract data types. These include: name, surname, car model, 
+main car license plate, postal address, residence country, postal code, 
+country, city, IBAN, national ID, gender, email, education level, age, 
+pet animal, score, mobile phone, home phone, and many more.
+
+My goal is to create an application that allows users to store small 
+pieces of data on their smartphones and, eventually, share them with 
+others. To achieve this, it would be useful to have a predefined and 
+extensive list of common data types that people might need to share at 
+any moment!

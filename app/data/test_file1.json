@@ -1,0 +1,12 @@
+{
+    "data": {
+      "username": "johndoe",
+      "email": "johndoe@example.com",
+      "age": 29,
+      "city": "New York",
+      "country": "USA",
+      "phone": "+1-555-1234",
+      "membership": "Gold"
+    }
+  }
+  

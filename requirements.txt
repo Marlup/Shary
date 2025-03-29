@@ -1,0 +1,15 @@
+kivy
+kivymd
+pyyaml
+python-dotenv
+flask
+pyjnius
+cython
+buildozer
+pytest
+cryptography
+aiortc
+qrcode
+pyzbar
+pillow
+firebase-admin
