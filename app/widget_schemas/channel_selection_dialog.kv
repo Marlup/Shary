@@ -1,0 +1,44 @@
+# --- views/select_channel_dialog.kv ---
+#:kivy 2.3.0
+
+<SelectChannel>:  # Root widget
+    BoxLayout:
+        orientation: "vertical"
+        padding: "20dp"
+        spacing: "10dp"
+
+        MDCard:
+            size_hint_x: None
+            width: "200dp"
+            size_hint_y: None
+            height: "80dp"
+            radius: [20]  # Round edges
+            md_bg_color: 0.2, 0.4, 0.8, 0.5  # Blueish with 50% opacity
+            elevation: 0.5
+            pos_hint: {"center_x": 0.5}
+
+            BoxLayout:
+                id: channel_container
+                orientation: "vertical"
+                padding: "10dp"
+                spacing: "5dp"
+                pos_hint: {"center_x": 0.5}
+
+                MDLabel:
+                    text: "Selected Channel"
+                    halign: "center"
+                    theme_text_color: "Secondary"
+                    font_style: "Subtitle1"
+
+                MDLabel:
+                    id: selected_channel
+                    text: "Firebase Database"  # Default value
+                    halign: "center"
+                    theme_text_color: "Primary"
+                    font_style: "H6"
+
+        MDRaisedButton:
+            text: "Select Channel"
+            icon: "menu"
+            on_release: app.root.get_screen("field").show_menu(self)
+            pos_hint: {"center_x": 0.5}

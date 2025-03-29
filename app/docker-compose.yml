@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: python_app
+    volumes:
+      - .:/app
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/firebase-key.json
+      - SQLITE_DB_PATH=/app/database.sqlite
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+
+  db:
+    image: nouchka/sqlite3
+    container_name: sqlite_db
+    volumes:
+      - ./database.sqlite:/data/database.sqlite
+
+volumes:
+  db_data:

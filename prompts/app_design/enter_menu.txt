@@ -1,0 +1,17 @@
+I want to build a Mobile App with Python and qt. I'd like to use mysql as database.
+The main menu asks for username and password; alternatively, the user can press a button 
+to identify by biometrics (finger digit). The number of attempts are limitless.
+
+Once the credentials are ok, jump to the next screen (FieldsScreen). The main menu show a table/list with a header of three columns:
+key (name of the field), value (main value content of the field), creation date (d/m/y). Each row is selectable, 
+so highlight selected ones as soft green and deselect when retouched.
+
+Above the list, add a button to add a new Field (InsertFieldButton). At selection, insert an empty row with key and value to be added.
+Key should be a string no more than 256 digits length. Key can be more flexible (string, files uploaded from the device, Google Drive,
+Or other platforms, raw jsons, raw xmls, raw https, etc). Once the field is completed, either 'insert' or 'cancel' button can be pressed.
+
+Next to the add new Field button, a button (InsertFieldsButton) to share the data to another user is shown when at least one field is selected. This button is disabled when no field is selected.
+If InsertFieldsButton is pressed, a new screen (UsersScreen) is shown with a text field to enter the username of the recipient, a text field or a contact list to select the recipient's email or phone number.
+More than one recipient can be selected. Once the recipient's data is entered, either buttons accept or cancel can be pressed or 'back' to go back to field list and configure the selection.
+Once the users are selected, the sending method has to be selected. For now, use via email or sms, which opens a email draft with recipient and sender directions and a template text to the body with regards
+and indication that the message is sent from the Shary Application; plus the attached fields as json file.

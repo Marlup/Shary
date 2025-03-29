@@ -20,13 +20,13 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
-from source.constant import (
+from core.constant import (
     MSG_DEFAULT_SEND_FILENAME,
     SMTP_SERVER,
     SMTP_SSL_PORT,
     COLLECTION_SHARE_NAME
 )
-from source.crypto import (
+from core.crypto import (
     encrypt_verification_code,
     encrypt_data
 )
@@ -266,25 +266,27 @@ def parsed_keys_as_vertical_string(rows) -> str:
     parsed_json = "\n\t" + "\n\t".join(keys)
     return parsed_json
 
-def make_base_tables(conn=None):
+def try_make_base_tables(conn=None):
     if conn is None:
         from sqlite3 import Connection
         
         conn = Connection("shary_demo")
         conn.cursor()
         # dates are ISO8601 strings ("YYYY-MM-DD HH:MM:SS.SSS").
+
+        # Create fields table
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS fields (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 key VARCHAR(256) UNIQUE NOT NULL,
                 value TEXT,
-                custom_name VARCHAR(256),
-                creation_date TEXT DEFAULT (DATE('now'))
+                alias_key VARCHAR(256),
+                added_date TEXT DEFAULT (DATE('now'))
             );
             """
             )
-        
+        # Create users table
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -293,10 +295,22 @@ def make_base_tables(conn=None):
                 email VARCHAR(256) UNIQUE NOT NULL,
                 phone_number INTEGER,
                 phone_extension INTEGER,
-                creation_date TEXT DEFAULT (DATE('now'))
+                added_date TEXT DEFAULT (DATE('now'))
             );
             """
             )
+        # Create requests table
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                receivers VARCHAR NOT NULL,
+                keys VARCHAR NOT NULL,
+                added_date TEXT DEFAULT (DATE('now'))
+            );
+            """
+            )
+            
         conn.commit()
         conn.close()
 

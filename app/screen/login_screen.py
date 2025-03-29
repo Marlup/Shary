@@ -7,10 +7,15 @@ from kivy.uix.screenmanager import Screen
 from kivymd.uix.snackbar import MDSnackbar
 from kivy.utils import platform
 
-if platform == 'android':
+from core.constant import (
+    SCREEN_NAME_LOGIN,
+    SCREEN_NAME_FIELD
+)
+
+if platform == "android":
     from jnius import autoclass
-    PythonActivity = autoclass('org.kivy.android.PythonActivity')
-    Context = autoclass('android.content.Context')
+    PythonActivity = autoclass("org.kivy.android.PythonActivity")
+    Context = autoclass("android.content.Context")
 else:
     print("Running on non-Android platform.")
 
@@ -18,20 +23,20 @@ FINGERPRINT_AVAILABLE = False
 
 class LoginScreen(Screen):
     def __init__(self, **kwargs):
-        super().__init__(name="login", **kwargs)
+        super().__init__(name=SCREEN_NAME_LOGIN, **kwargs)
 
     def focus_next_mdtextfield(self):
-        if self.manager.current != 'login':
+        if self.manager.current != SCREEN_NAME_LOGIN:
             return
 
-        focused_widget = next((w for w in self.children if getattr(w, 'focus', False)), None)
+        focused_widget = next((w for w in self.children if getattr(w, "focus", False)), None)
         if focused_widget:
             current_index = self.children.index(focused_widget)
             next_index = (current_index + 1) % len(self.children)
         else:
             next_index = 0
 
-        if hasattr(self.children[next_index], 'focus'):
+        if hasattr(self.children[next_index], "focus"):
             self.children[next_index].focus = True
 
     def check_login(self, instance):
@@ -41,14 +46,14 @@ class LoginScreen(Screen):
         if username == os.getenv("SHARY_ROOT_USERNAME") and password == os.getenv("SHARY_ROOT_PASSWORD"):
             # Remove the login screen after validating credentials and 
             # pressing the login button
-            self.manager.current = "field"
+            self.manager.current = SCREEN_NAME_FIELD
         else:
             #toast("Invalid credentials")
             MDSnackbar("Invalid credentials").open()
             pass
 
     def biometric_auth(self, instance):
-        self.manager.current = "field"
+        self.manager.current = SCREEN_NAME_FIELD
         
         if FINGERPRINT_AVAILABLE:
             activity = PythonActivity.mActivity
@@ -58,7 +63,7 @@ class LoginScreen(Screen):
                 MDSnackbar("Biometric authentication successful").open()
                 # Remove the login screen after validating biometrical-credentials and 
                 # pressing the login button
-                self.manager.current = "field"
+                self.manager.current = SCREEN_NAME_FIELD
             else:
                 #toast("Biometric authentication failed or not set up")
                 MDSnackbar("Biometric authentication failed or not set up").open()
@@ -70,7 +75,3 @@ class LoginScreen(Screen):
 
     def on_enter(self):
         load_dotenv(".env")
-
-def get_login_screen():
-    Builder.load_file("widget_schemas/login.kv")
-    return LoginScreen()

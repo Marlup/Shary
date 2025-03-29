@@ -1,0 +1,4 @@
+I am making a enum for different data types that a column 
+can have in a fixed way. make a list. Some examples, are: integer, 
+decimal, uinteger, string, multi-string... among others simple or 
+complex ones. Make an enum and common data type validators.

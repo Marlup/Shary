@@ -12,22 +12,22 @@ from kivy.logger import Logger
 
 from firebase_admin import firestore
 from kivy.clock import mainthread
+import sqlite3
 
 # Import your Firebase initialization and encryption functions
-from source.func_utils import request_access_db_firebase
+from core.func_utils import request_access_db_firebase
 
-from source.func_utils import (
+from core.func_utils import (
     load_user_credentials,
     build_email_html_body,
     send_email,
     information_panel
 )
 
-import sqlite3
 
-from source.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
+from core.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
 
-from source.query_schemas import (
+from core.query_schemas import (
     # Queries for users 
     SELECT_ALL_USERS,
     DELETE_USER_BY_USERNAME,

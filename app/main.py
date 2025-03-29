@@ -1,14 +1,17 @@
 # --- main.py ---
 import threading
 from kivymd.app import MDApp
-from source.screen_manager import SharyScreenManager
-from source.backend import run_flask
+from screen.screen_manager import SharyScreenManager
+from core.backend import run_flask
+from core.func_utils import try_make_base_tables
 
 class SharyApp(MDApp):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.title = "Shary"
-
+        
+        # Make tables
+        try_make_base_tables()
     def build(self):
         return SharyScreenManager()
 
