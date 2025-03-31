@@ -1,22 +1,22 @@
 # --- source/user_creation_screen.py ---
 import re
-import os
-# --- common/user_creation_screen.py ---
-import re
-from dotenv import load_dotenv, set_key
-from kivy.lang import Builder
+
+from dotenv import set_key
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.dialog import MDDialog
 
-from core.constant import (
+from front.core.constant import (
     SCREEN_NAME_LOGIN,
-    SCREEN_NAME_USER_CREATION
+    SCREEN_NAME_USER_CREATION,
+    PATH_ENV_VARIABLES
 )
+
+from front.core.dtos import SuperUserDTO
 
 class UserCreationScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(name=SCREEN_NAME_USER_CREATION, **kwargs)
-
+    
     def validate_email(self, email):
         pass
     
@@ -55,15 +55,36 @@ class UserCreationScreen(Screen):
         if password_error:
             self.show_dialog("Weak Password", password_error)
             return
-
-        set_key(".env", "SHARY_ROOT_EMAIL", email)
-        set_key(".env", "SHARY_ROOT_USERNAME", username)
-        set_key(".env", "SHARY_ROOT_PASSWORD", password)
-
-        self.show_dialog("Success", "User created successfully!")
-
+        
+        if self.manager.super_user is None:
+            self.manager.super_user = SuperUserDTO(username=username, 
+                                                   email=email,
+                                                   phone=0,
+                                                   extension=0
+                                                   )
+        
         # Remove the user creation screen after successful registration
         self.manager.current = SCREEN_NAME_LOGIN
+
+        # Load the cryptographer
+        self.manager.load_cryptographer()
+
+        # Save ENV variables
+        set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_EMAIL", email)
+        set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_USERNAME", username)
+        set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_PASSWORD", password)
+        set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_PUBKEY_LIVE", "false")
+        
+        # Upload the private keys to the cloud service
+        ok_upload = self.manager.cloud_service.upload_pubkey(
+            self.manager.cryptographer,
+            self.manager.super_user.username
+            )
+        if ok_upload:
+            set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_PUBKEY_LIVE", "true")
+            self.show_dialog("Success", "User created successfully!")
+        else:
+            self.show_dialog("Error", "User wasn't created. Conflict at pubkey upload!")
 
     def show_dialog(self, title, message):
         dialog = MDDialog(title=title, text=message)

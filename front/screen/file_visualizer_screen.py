@@ -1,23 +1,20 @@
-from kivy.lang import Builder
-from kivymd.uix.screen import MDScreen
-#from kivymd.toast import toast
-from kivymd.uix.datatables import MDDataTable
-from kivymd.uix.snackbar import MDSnackbar
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.menu import MDDropdownMenu
+import os
+import json
+
 from kivy.metrics import dp
 from kivy.uix.screenmanager import SlideTransition
 from kivy.logger import Logger
-import json
-import os
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.snackbar import MDSnackbar
+from kivymd.uix.menu import MDDropdownMenu
 
-from core.constant import (
+from front.core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
-    DEFAULT_ROW_REST_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
-    PATH_FILE_STORAGE,
+    PATH_DATA_DOWNLOAD,
     SCREEN_NAME_FIELD,
     SCREEN_NAME_FILE_VISUALIZER,
 )
@@ -54,10 +51,10 @@ class FileVisualizerScreen(MDScreen):
     
     def _get_json_files(self):
         """Retrieve available JSON files from a directory."""
-        if not os.path.exists(PATH_FILE_STORAGE):
-            os.makedirs(PATH_FILE_STORAGE)
+        if not os.path.exists(PATH_DATA_DOWNLOAD):
+            os.makedirs(PATH_DATA_DOWNLOAD)
         
-        downloaded_files = os.listdir(PATH_FILE_STORAGE)
+        downloaded_files = os.listdir(PATH_DATA_DOWNLOAD)
         return [f for f in downloaded_files if f.endswith(".json")]
 
     def on_enter(self):
@@ -101,7 +98,7 @@ class FileVisualizerScreen(MDScreen):
             return
 
         self.selected_file = filename
-        file_path = os.path.join(PATH_FILE_STORAGE, filename)
+        file_path = os.path.join(PATH_DATA_DOWNLOAD, filename)
         
         try:
             with open(file_path, "r") as f:

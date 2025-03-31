@@ -1,13 +1,12 @@
 # --- source/login_screen.py ---
 import os
 from dotenv import load_dotenv
-from kivy.lang import Builder
-from kivy.uix.screenmanager import Screen
-#from kivymd.toast import toast
-from kivymd.uix.snackbar import MDSnackbar
-from kivy.utils import platform
 
-from core.constant import (
+from kivy.uix.screenmanager import Screen
+from kivy.utils import platform
+from kivymd.uix.snackbar import MDSnackbar
+
+from front.core.constant import (
     SCREEN_NAME_LOGIN,
     SCREEN_NAME_FIELD
 )
@@ -43,7 +42,8 @@ class LoginScreen(Screen):
         username = self.ids.username_input.text.strip()
         password = self.ids.password_input.text.strip()
 
-        if username == os.getenv("SHARY_ROOT_USERNAME") and password == os.getenv("SHARY_ROOT_PASSWORD"):
+        if username == os.getenv("SHARY_MAIN_USERNAME") \
+        and password == os.getenv("SHARY_MAIN_PASSWORD"):
             # Remove the login screen after validating credentials and 
             # pressing the login button
             self.manager.current = SCREEN_NAME_FIELD
@@ -75,3 +75,7 @@ class LoginScreen(Screen):
 
     def on_enter(self):
         load_dotenv(".env")
+    
+    def on_leave(self):
+        # Load the cryptographer
+        self.manager.load_cryptographer()

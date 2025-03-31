@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel
 
 class FieldDTO(BaseModel):
     key: str
@@ -19,3 +19,9 @@ class UserDTO(BaseModel):
     phone: Optional[int] = 0
     extension: Optional[int] = 0
     date_added: Optional[str|datetime] = "now"
+
+class SuperUserDTO(BaseModel):
+    username: str
+    email: str
+    phone: Optional[int] = 0
+    extension: Optional[int] = 0

@@ -1,22 +1,28 @@
+from typing import List
+
 import sqlite3
 from kivy.logger import Logger
-from typing import List
-from core.interfaces import (
+
+from front.core.interfaces import (
     IFieldRepository,
     IRequestRepository,
     IUserRepository
 )
 
-from core.dtos import (
+from front.core.dtos import (
     FieldDTO,
     UserDTO
 )
 
-from core.query_schemas import *
+from front.core.constant import (
+    PATH_DB
+)
+
+from front.core.query_schema import *
 
 class FieldRepository(IFieldRepository):
     def __init__(self, db_connection=None):
-        self.db_connection = db_connection if db_connection else sqlite3.connect("shary_demo.db")
+        self.db_connection = db_connection if db_connection else sqlite3.connect(PATH_DB)
 
     def add_field(self, field: FieldDTO) -> None:
         cursor = self.db_connection.cursor()
@@ -50,7 +56,7 @@ class FieldRepository(IFieldRepository):
 # Implementation Example (Can be used later)
 class RequestRepository(IRequestRepository):
     def __init__(self, db_connection):
-        self.db_connection = db_connection if db_connection else sqlite3.connect("shary_demo.db")
+        self.db_connection = db_connection if db_connection else sqlite3.connect(PATH_DB)
 
     def add_request(self, receivers, keys):
         cursor = self.db_connection.cursor()
@@ -72,7 +78,7 @@ class RequestRepository(IRequestRepository):
 
 class UserRepository(IUserRepository):
     def __init__(self, db_connection=None):
-        self.db_connection = db_connection if db_connection else sqlite3.connect("shary_demo.db")
+        self.db_connection = db_connection if db_connection else sqlite3.connect(PATH_DB)
 
     def add_user(self, user: UserDTO) -> None:
         cursor = self.db_connection.cursor()

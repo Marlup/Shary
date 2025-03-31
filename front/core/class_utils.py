@@ -3,43 +3,22 @@ import json
 import threading
 
 from kivy.lang import Builder
-from kivymd.uix.dialog import MDDialog
+from kivy.logger import Logger
+from kivy.clock import mainthread
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.screen  import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivy.logger import Logger
 
-from firebase_admin import firestore
-from kivy.clock import mainthread
 import sqlite3
 
-# Import your Firebase initialization and encryption functions
-from core.func_utils import request_access_db_firebase
-
-from core.func_utils import (
+from front.core.func_utils import (
     load_user_credentials,
-    build_email_html_body,
-    send_email,
     information_panel
 )
 
-
-from core.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
-
-from core.query_schemas import (
-    # Queries for users 
-    SELECT_ALL_USERS,
-    DELETE_USER_BY_USERNAME,
-    INSERT_USER,
-    # Queries for fields 
-    SELECT_ALL_FIELDS,
-    DELETE_FIELD_BY_KEY,
-    INSERT_FIELD,
-    # Queries for Requests 
-    DELETE_REQUEST_BY_RECEIVERS,
-    INSERT_REQUEST,
-)
+from front.core.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
+from front.security.crypto import RSACrypto
 
 class Utils():
     @staticmethod
@@ -95,92 +74,6 @@ class DataManager():
                 Logger.info(f"0 records affected at function {func.__name__} \
                             operation")
         return wrapper
-    
-    def add_request(self, receivers, keys):
-        cursor = self.db_connection.cursor()
-        try:
-            cursor.execute(INSERT_REQUEST, (receivers, keys))
-            self.db_connection.commit()
-        except sqlite3.IntegrityError:
-            Logger.warning(f"IntegrityError: INSERT operation attempt failed \
-                            for request {receivers}. Potential duplication.")
-        cursor.close()
-
-    @log_rows_affected
-    def delete_request(self, receivers):
-        cursor = self.db_connection.cursor()
-        cursor.execute(DELETE_REQUEST_BY_RECEIVERS, (receivers, ))
-        self.db_connection.commit()
-        cursor.close()
-
-        return cursor
-
-    def add_user(self, username, email, phone=0, extension=0):
-        cursor = self.db_connection.cursor()
-        try:
-            cursor.execute(INSERT_USER, (username, email, phone, extension))
-            self.db_connection.commit()
-        except sqlite3.IntegrityError:
-            Logger.warning(f"IntegrityError: INSERT operation attempt failed \
-                            for user {username}. Potential duplication.")
-        cursor.close()
-
-    def load_users_from_db(self):
-        cursor = self.db_connection.cursor()
-        cursor.execute(SELECT_ALL_USERS)
-        records = cursor.fetchall()
-        cursor.close()
-
-        return records
-
-    @log_rows_affected
-    def delete_user(self, username):
-        cursor = self.db_connection.cursor()
-        cursor.execute(DELETE_USER_BY_USERNAME, (username, ))
-        self.db_connection.commit()
-        cursor.close()
-        return cursor
-    
-    @log_rows_affected
-    def delete_users(self, usernames):
-        cursor = self.db_connection.cursor()
-        cursor.executemany(DELETE_USER_BY_USERNAME, usernames)
-        cursor.close()
-        return cursor
-
-    def add_field(self, key, value, alias_key=""):
-        cursor = self.db_connection.cursor()
-        try:
-            cursor.execute(INSERT_FIELD, (key, value, alias_key))
-            self.db_connection.commit()
-        except sqlite3.IntegrityError:
-            Logger.warning(f"IntegrityError: INSERT operation attempt failed \
-                            for key {key}. Potential duplication.")
-        cursor.close()
-
-    def load_fields_from_db(self):
-        cursor = self.db_connection.cursor()
-        cursor.execute(SELECT_ALL_FIELDS)
-        records = cursor.fetchall()
-        cursor.close()
-
-        return records
-
-    @log_rows_affected
-    def delete_field(self, key):
-        cursor = self.db_connection.cursor()
-        cursor.execute(DELETE_FIELD_BY_KEY, (key,))
-        self.db_connection.commit()
-        cursor.close()
-        return cursor
-
-    @log_rows_affected
-    def delete_fields(self, keys):
-        cursor = self.db_connection.cursor()
-        cursor.executemany(DELETE_FIELD_BY_KEY, keys)
-        self.db_connection.commit()
-        cursor.close()
-        return cursor
 
 class EmailHandler():
     def __init__(self, parent_screen: MDScreen):
@@ -220,61 +113,17 @@ class EmailHandler():
         self.dialog.content_cls.ids.file_format_dropdown.text = file_format
         self.dropdown_menu.dismiss()
 
-    def send_email_from_dialog(self):
-        dialog_ids = self.dialog.content_cls.ids
-        filename = dialog_ids.filename_input.text.strip()
-        file_format = dialog_ids.file_format_dropdown.text.strip()
-
-        if not filename:
-            sender_email, _ = load_user_credentials()
-            sender_name = sender_email.split("@")[0]
-            filename = f"{MSG_DEFAULT_SEND_FILENAME}{sender_name}"
-        filename += f".{file_format}"
-
-        if file_format not in FILE_FORMATS:
-            information_panel("Action: sending email", "Invalid file format.")
-            return
-
-        recipients = self.parent_screen.manager.get_screen("users").get_selected_emails()
-        if not recipients:
-            information_panel("Action: sending email", "Select at least one external user to send to.")
-            return
-
-        sender_email, sender_password = load_user_credentials()
-        subject = f"Shary message with {len(self.parent_screen._selected_fields)} fields"
-        message = build_email_html_body(
-            sender_email,
-            recipients,
-            subject,
-            filename,
-            file_format,
-            self.parent_screen._selected_fields,
-        )
-
-        return_message = send_email(sender_email, sender_password, message)
-        if return_message == "":
-            information_panel("Action: sending email", "Email sent successfully")
-        elif return_message == "bad-format":
-            information_panel("Action: sending email", "Invalid file format.")
-        else:
-            information_panel("Action: sending email", f"Error at sending: {str(return_message)}")
-        self.dialog.dismiss()
-
-    def dismiss_email_dialog(self):
-        if self.dialog:
-            self.dialog.dismiss()
-
-class FirebaseManager:
+class FirebaseManager():
     firebase_collection_name = "sharing"
     check_interval = 30  # Default check interval in seconds
 
-    def __init__(self, app):
+    def __init__(self, app, cryptographer: RSACrypto):
         """
         Initializes the Firebase manager.
         :param app: Reference to the main KivyMD app.
         """
         self.app = app
-        self.db = request_access_db_firebase()
+        self.cryptographer = cryptographer
         self.running = False
         self.session_requests = []  # List of (session_id, secret_key) tuples
         self.checking_thread = None
@@ -323,11 +172,20 @@ class FirebaseManager:
                 return  # Skip if the document doesn't exist
 
             data = doc.to_dict()
-            sender = data.get("sender", "Unknown")
-            fields = self.decrypt_data(data["data"])  # Decrypt the stored data
-            verification_code = data.get("verification_code", "")
 
-            if self.validate_verification_code(verification_code, data["nonce"]):
+            if data["mode"] == "request":
+                pass
+            elif data["mode"] == "send":
+                #fields = self.cryptographer.decrypt(data["data"])  # Decrypt the stored data
+                pass
+            elif data["mode"] == "share-pubkey":
+                #received_pubkey = data["data"]  # Decrypt the stored data
+                pass
+
+            sender = data.get("sender", "Unknown")
+            verification_hash = data.get("verification_hash", "")
+
+            if self.validate_verification_hash(verification_hash, data["nonce"]):
                 # Remove from the pending list
                 self.session_requests.remove((session_id, secret_key))
 
@@ -350,11 +208,11 @@ class FirebaseManager:
         screen = self.app.root.get_screen("fields")
         screen.update_list(sender, fields, session_id)  # Call a UI update method
 
-    def validate_verification_code(self, verification_code, nonce):
+    def validate_verification_hash(self, verification_hash, nonce):
         """
         Validates the verification code (simulated).
         """
-        return bool(verification_code and nonce)
+        return bool(verification_hash and nonce)
 
     def decrypt_data(self, encrypted_data):
         """

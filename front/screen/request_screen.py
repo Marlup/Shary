@@ -1,16 +1,15 @@
 # --- source/requests_screen.py ---
 from kivy.lang import Builder
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.button import MDRaisedButton
-#from kivymd.toast import toast
-from kivymd.uix.snackbar import MDSnackbar
-from kivymd.uix.datatables import MDDataTable
-from kivymd.uix.dialog import MDDialog
 from kivy.uix.screenmanager import SlideTransition
 from kivy.metrics import dp
 from kivy.logger import Logger
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.snackbar import MDSnackbar
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.dialog import MDDialog
 
-from core.constant import (
+from front.core.constant import (
     MSG_DEFAULT_REQUEST_FILENAME,
     FILE_FORMATS,
     DEFAULT_ROW_KEY_WIDTH,
@@ -19,25 +18,23 @@ from core.constant import (
     DEFAULT_NUM_ROWS_PAGE,
     SCREEN_NAME_FIELD,
     SCREEN_NAME_REQUEST,
-    SCREEN_NAME_USER
+    SCREEN_NAME_USER,
+    PATH_SCHEMA_REQUEST_DIALOG
 )
 
-from core.class_utils import (
+from front.core.class_utils import (
     AddRequestField,
     SendEmailDialog
 )
 
-from core.func_utils import (
+from front.core.func_utils import (
     information_panel,
-    load_user_credentials,
-    build_email_html_body,
-    send_email
 )
 
 class RequestScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(name=SCREEN_NAME_REQUEST, **kwargs)
-        Builder.load_file("widget_schemas/add_request_dialog.kv")  # Load the dialog definition
+        Builder.load_file(PATH_SCHEMA_REQUEST_DIALOG)  # Load the dialog definition
         
         self.main_table = None
         self._selected_req_fields = []
@@ -139,41 +136,30 @@ class RequestScreen(MDScreen):
     def send_email_from_dialog(self):
         dialog_ids = self.email_dialog.content_cls.ids
         filename = dialog_ids.filename_input.text.strip()
-        file_format = "json_req"
+        file_format = "json_req"  # Tipo especial para solicitudes (puede ser extendido en el servicio)
 
-        if not filename:
-            sender_email, _ = load_user_credentials()
-            sender_name = sender_email.split("@")[0]
-            filename = f"{MSG_DEFAULT_REQUEST_FILENAME}{sender_name}"
-        filename += f".{file_format}"
+        # Obtener datos de la tabla
+        rows_to_send = self.main_table.get_row_checks()
 
-        if file_format not in FILE_FORMATS:
-            information_panel("Action: sending email", "Invalid file format.")
-            return
-        
+        # Obtener destinatarios desde la pantalla de usuarios
         recipients = self.manager.get_screen(SCREEN_NAME_USER).get_checked_emails(index=1)
-        if not recipients:
-            information_panel("Action: sending email", "Select at least one external user to send to.")
-            return
 
-        sender_email, sender_password = load_user_credentials()
-        subject = f"Shary message with {len(self.main_table.get_row_checks())} fields"
-        message = build_email_html_body(
-            sender_email,
-            recipients,
-            subject,
-            filename,
-            file_format,
-            self.main_table.get_row_checks(),
+        # Preparar payload con validación dentro del servicio
+        payload = self.manager.email_service.create_payload(
+            rows=rows_to_send,
+            recipients=recipients,
+            filename=filename,
+            file_format=file_format
         )
 
-        return_message = send_email(sender_email, sender_password, message)
-        if return_message == "":
-            information_panel("Action: sending email", "Email sent successfully")
-        elif return_message == "bad-format":
-            information_panel("Action: sending email", "Invalid file format.")
-        else:
-            information_panel("Action: sending email", f"Error at sending: {str(return_message)}")
+        if not payload:
+            return  # El servicio ya manejó la información del error
+
+        # Enviar el email usando el payload completo
+        self.manager.email_service.send_from_payload(payload)
+
+        # Feedback visual y cerrar diálogo
+        information_panel("Action: sending email", "Email sent successfully")
         self.email_dialog.dismiss()
 
     def dismiss_email_dialog(self):

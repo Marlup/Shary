@@ -1,27 +1,19 @@
 # --- source/fields_screen.py ---
 from kivy.lang import Builder
 from kivy.logger import Logger
-from kivymd.uix.snackbar import MDSnackbar
 from kivy.metrics import dp
-from kivymd.uix.button import MDRaisedButton
 from kivy.uix.screenmanager import SlideTransition
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.dialog import MDDialog
 from kivymd.uix.menu import MDDropdownMenu
-from kivy.utils import platform
-from kivy.uix.scrollview import ScrollView
 
-from core.func_utils import (
-    load_user_credentials,
-    send_email,
-    build_email,
-    information_panel,
+from front.core.func_utils import (
     get_safe_row_checks,
-    send_data_to_firebase
 )
 
-from core.constant import (
+from front.core.constant import (
     FILE_FORMATS,
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
@@ -31,28 +23,29 @@ from core.constant import (
     SCREEN_NAME_FIELD,
     SCREEN_NAME_USER,
     SCREEN_NAME_FILE_VISUALIZER,
+    PATH_SCHEMA_FIELD_DIALOG,
+    PATH_SCHEMA_SEND_EMAIL_DIALOG,
+    PATH_SCHEMA_CHANNEL_CONTENT_DIALOG,
 )
 
-from core.class_utils import (
+from front.core.class_utils import (
     AddField,
     SendEmailDialog,
-    SendToFirebaseDialog,
     SelectChannel,
     EnhancedMDScreen
 )
 
-from core.dtos import FieldDTO
-from core.repositories import FieldRepository
+from front.core.dtos import FieldDTO
+from front.repository.field_repository import FieldRepository
 
 class FieldScreen(EnhancedMDScreen):
     def __init__(self, db_connection=None, **kwargs):
         super().__init__(name=SCREEN_NAME_FIELD, **kwargs)
         self.field_repo = FieldRepository(db_connection)
         
-        self.dialog_add_field = Builder.load_file("widget_schemas/add_field_dialog.kv")  # Load the dialog definition
-        self.email_dialog = Builder.load_file("widget_schemas/send_email_dialog.kv")  # Load the dialog definition
-        self.to_firebase_dialog = Builder.load_file("widget_schemas/send_to_firebase_dialog.kv")  # Load the dialog definition
-        self.channel_selection_dialog = Builder.load_file("widget_schemas/channel_selection_dialog.kv")  # Load the dialog definition
+        self.dialog_add_field = Builder.load_file(PATH_SCHEMA_FIELD_DIALOG)  # Load the dialog definition
+        self.email_dialog = Builder.load_file(PATH_SCHEMA_SEND_EMAIL_DIALOG)  # Load the dialog definition
+        self.channel_selection_dialog = Builder.load_file(PATH_SCHEMA_CHANNEL_CONTENT_DIALOG)  # Load the dialog definition
         
         self.main_table = None
 
@@ -96,7 +89,6 @@ class FieldScreen(EnhancedMDScreen):
         self.main_table.add_row((field.key, field.value, "now"))
 
     def _load_fields_from_db(self):
-        #self.ids.table_container.remove_widget(self.main_table)
         if self.main_table:
             return
         
@@ -150,24 +142,37 @@ class FieldScreen(EnhancedMDScreen):
     def show_channel_selection_dialog(self):
         if not self.channel_selection_dialog:
             self.channel_selection_dialog = MDDialog(
-                title="Select Sending Channel",
+                title="Select Channel",
                 type="custom",
-                content_cls=SelectChannel(size_hint_y=None, height="200dp"),
+                content_cls=SelectChannel(),
                 buttons=[
                     MDRaisedButton(text="Cancel", on_release=lambda _: self.dismiss_channel_selection_dialog()),
                     MDRaisedButton(text="Send", on_release=lambda _: self.process_channel()),
-            ],
+                ]
             )
-            #self._init_menu_formats()
-
         self.channel_selection_dialog.open()
+    
+    def dismiss_channel_selection_dialog(self):
+        if self.channel_selection_dialog:
+            self.channel_selection_dialog.dismiss()
+
+    def toggle_password_visibility(self):
+        field = self.channel_selection_dialog.content_cls.ids.secret_key
+        field.password = not field.password
+        field.icon_right = "eye" if not field.password else "eye-off"
+
+    def generate_secret_key(self):
+        from random import choices
+        import string
+        key = ''.join(choices(string.ascii_letters + string.digits, k=16))
+        self.channel_selection_dialog.content_cls.ids.secret_key.text = key
 
     def show_menu(self, instance):
         menu_items = [
             {
                 "viewclass": "OneLineListItem",
-                "text": "Firebase Database",
-                "on_release": lambda: self.set_text("Firebase Database")
+                "text": "Cloud",
+                "on_release": lambda: self.set_text("Cloud")
             },
             {
                 "viewclass": "OneLineListItem",
@@ -203,25 +208,10 @@ class FieldScreen(EnhancedMDScreen):
         
         if channel == "Email":
             self.show_send_email_dialog()
-        elif channel == "Firebase Database":
-            self.show_send_to_firebase_dialog()
-        else:
-            self.show_send_to_firebase_dialog()
-
-    def show_send_to_firebase_dialog(self):
-        if not self.to_firebase_dialog:
-            self.to_firebase_dialog = MDDialog(
-                title="Send Fields via Firebase",
-                type="custom",
-                content_cls=SendToFirebaseDialog(size_hint_y=None, height="200dp"),
-                buttons=[
-                    MDRaisedButton(text="Cancel", on_release=lambda _: self.dismiss_to_firebase_dialog()),
-                    MDRaisedButton(text="Send", on_release=lambda _: self.prepare_to_firebase()),
-            ],
+        elif channel == "Cloud":
+            self.manager.cloud_service.send_data(
+                rows, sender, recipients, on_request=False
             )
-            #self._init_menu_formats()
-
-        self.to_firebase_dialog.open()
     
     def show_send_email_dialog(self):
         if not self.email_dialog:
@@ -257,94 +247,22 @@ class FieldScreen(EnhancedMDScreen):
         self.email_dialog.content_cls.ids.file_format_dropdown.text = file_format
         self.menu_formats.dismiss()
     
-    def prepare_to_firebase(self):
-        # Get Data
-        # Row fields to be sent
-        rows_to_send = get_safe_row_checks(self.main_table, self.checked_rows)
-        print(f"rows_to_send - {rows_to_send}")
-
-        # User credentials
-        sender, _ = load_user_credentials()
-        
-        # Get and validate the recipients (list of emailss)
-        recipients = self.manager.get_screen("users").get_checked_emails(index=1)
-        print(f"recipients - {recipients}")
-
-        if not recipients:
-            information_panel("Action: sending fields", "Select at least one external user.")
-            return
-        
-        # Check if to_firebase_dialog.
-        if not hasattr(self, "to_firebase_dialog") or not self.to_firebase_dialog:
-            print("to_firebase_dialog is not initialized")
-            return
-        
-        # Check if the session id and secret key are set
-        if hasattr(self.to_firebase_dialog.content_cls, "ids") \
-           and (
-                "session_id" in self.to_firebase_dialog.content_cls.ids \
-                or "secret_key" in self.to_firebase_dialog.content_cls.ids
-                ):
-            session_id = self.to_firebase_dialog.content_cls.ids.session_id.text
-            secret_key = self.to_firebase_dialog.content_cls.ids.secret_key.text
-        else:
-            print("session_id not found in to_firebase_dialog.content_cls.ids")
-            return
-
-        #self.menu_channel.dismiss()  # Close menu
-
-        # Build the message
-        send_data_to_firebase(rows_to_send, session_id, sender, recipients, secret_key)
-
     def prepare_email(self):
-        # Get Data
         dialog_ids = self.email_dialog.content_cls.ids
+
         filename = dialog_ids.filename_input.text.strip()
-        file_format = "json" #dialog_ids.file_format_dropdown.text.strip()
-        
-        # Row fields to be sent
-        rows_to_send = get_safe_row_checks(self.main_table, self.checked_rows)
-        print(f"rows_to_send - {rows_to_send}")
-        
-        # Email subject
-        subject = f"Shary message with {len(rows_to_send)} fields"
+        file_format = "json"
+        rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        users = self.get_selected_users()
 
-        # User credentials
-        sender_email, sender_password = load_user_credentials()
+        payload = self.manager.email_service.create_payload(rows, users, filename, file_format)
 
-        # Validate file format
-        if file_format not in FILE_FORMATS:
-            information_panel("Action: sending email", "Invalid file format.")
-            return
-        
-        # Get and validate the recipients (list of emailss)
-        recipients = self.manager.get_screen("users").get_checked_emails(index=1)
-        print(f"recipients - {recipients}")
-        if not recipients:
-            information_panel("Action: sending email", "Select at least one external user.")
-            return
-        
-        # Build the email message
-        message = build_email(sender_email, recipients, subject, rows_to_send, filename, file_format)
-        
-        # Send the email
-        send_email(sender_email, sender_password, message)
+        if payload:
+            self.manager.email_service.send_from_payload(payload)
 
     def dismiss_email_dialog(self):
         if self.email_dialog:
             self.email_dialog.dismiss()
-
-    def dismiss_to_firebase_dialog(self):
-        if self.to_firebase_dialog:
-            self.to_firebase_dialog.dismiss()
-
-    def dismiss_channel_selection_dialog(self):
-        if self.channel_selection_dialog:
-            self.channel_selection_dialog.dismiss()
-
-    def clean_inputs(self):
-        self.to_firebase_dialog.content_cls.ids.session_id.text = ""
-        self.to_firebase_dialog.content_cls.ids.secret_key.text = ""
 
 # -------- callbacks --------
     def go_to_users_screen(self):
@@ -354,7 +272,20 @@ class FieldScreen(EnhancedMDScreen):
     def go_to_field_visualizer_screen(self):
         self.manager.transition = SlideTransition(direction="right", duration=0.4)
         self.manager.current = SCREEN_NAME_FILE_VISUALIZER
+
+    def generate_secret_key(self):
+        secret_key = self.manager.cryptographer.generate_nonce()
+        self.channel_selection_dialog.content_cls.ids.secret_key.hint_text = "secret_key"
+        self.channel_selection_dialog.content_cls.ids.secret_key.text = secret_key  # Optional: clear previous input
     
+    def toggle_password_visibility(self):
+        field = self.channel_selection_dialog.content_cls.ids.secret_key
+        field.password = not field.password
+        field.icon_right = "eye" if not field.password else "eye-off"
+    
+    def get_selected_users(self):
+        return self.manager.get_screen(SCREEN_NAME_USER).get_checked_emails(index=1)
+
     def on_enter(self):
         self._load_fields_from_db()
         

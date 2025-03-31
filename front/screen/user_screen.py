@@ -1,44 +1,41 @@
 # --- source/users_screen.py ---
 from kivy.lang import Builder
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.button import MDRaisedButton
-#from kivymd.toast import toast
-from kivymd.uix.datatables import MDDataTable
-from kivymd.uix.snackbar import MDSnackbar
-from kivymd.uix.dialog import MDDialog
 from kivy.uix.screenmanager import SlideTransition
 from kivy.metrics import dp
 from kivy.logger import Logger
+from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.datatables import MDDataTable
+from kivymd.uix.snackbar import MDSnackbar
+from kivymd.uix.dialog import MDDialog
 
-from core.class_utils import (
+from front.core.class_utils import (
     AddUser,
     EnhancedMDScreen
 )
 
-from core.func_utils import (
+from front.core.func_utils import (
     get_safe_row_checks
 )
 
-from core.constant import (
+from front.core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
-    DEFAULT_ROW_VALUE_WIDTH,
-    DEFAULT_ROW_REST_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
     SCREEN_NAME_FIELD,
     SCREEN_NAME_REQUEST,
     SCREEN_NAME_USER,
+    PATH_SCHEMA_USER_DIALOG,
 )
 
-from core.dtos import UserDTO
-from core.repositories import UserRepository
+from front.core.dtos import UserDTO
+from front.repository.user_repository import UserRepository
 
 class UserScreen(EnhancedMDScreen):
     def __init__(self, db_connection=None, **kwargs):
         super().__init__(name=SCREEN_NAME_USER, **kwargs)
         self.user_repo = UserRepository(db_connection)
         
-        self.dialog = Builder.load_file("widget_schemas/add_user_dialog.kv")  # Load the dialog definition
+        self.dialog = Builder.load_file(PATH_SCHEMA_USER_DIALOG)  # Load the dialog definition
         
         self.main_table = None
 
