@@ -12,6 +12,9 @@ DEFAULT_ROW_REST_WIDTH = 50
 DEFAULT_ROW_VALUE_WIDTH = 200
 DEFAULT_USE_PAGINATION = False
 
+# Time values
+TIME_ALIVE_DEFAULT = 60 * 60 # 3600s
+
 # Formats
 FIELD_HEADERS = ("key", "value", "creation_date")
 FILE_FORMATS = ("json", "csv", "xml", "yaml")
@@ -30,6 +33,8 @@ APPLICATION_NAME = "Shary"
 SMTP_SERVER = "smtp.gmail.com"
 FIREBASE_HOST = "localhost"
 FIREBASE_PORT = "5001"
+FIREBASE_APP_ID = "shary-21b61"
+NAME_GC_LOCATION_HOST = "us-central1"
 COLLECTION_SHARE_NAME = "sharing"
 SMTP_SSL_PORT = 465
 SMTP_TLS_PORT = 587
