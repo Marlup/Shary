@@ -13,3 +13,8 @@ qrcode
 pyzbar
 pillow
 firebase-admin
+pydantic
+google-auth 
+google-auth-oauthlib
+google-auth-httplib2
+pytest

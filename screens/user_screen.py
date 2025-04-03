@@ -8,16 +8,16 @@ from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.dialog import MDDialog
 
-from front.core.class_utils import (
+from core.classes import (
     AddUser,
     EnhancedMDScreen
 )
 
-from front.core.func_utils import (
-    get_safe_row_checks
+from core.functions import (
+    get_checked_rows
 )
 
-from front.core.constant import (
+from core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
@@ -27,8 +27,8 @@ from front.core.constant import (
     PATH_SCHEMA_USER_DIALOG,
 )
 
-from front.core.dtos import UserDTO
-from front.repository.user_repository import UserRepository
+from core.dtos import UserDTO
+from repositories.user_repository import UserRepository
 
 class UserScreen(EnhancedMDScreen):
     def __init__(self, db_connection=None, **kwargs):
@@ -40,7 +40,7 @@ class UserScreen(EnhancedMDScreen):
         self.main_table = None
 
     def _delete_users(self):
-        checked_rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        checked_rows = get_checked_rows(self.main_table, self.checked_rows)
 
         if not checked_rows:
             return
@@ -55,7 +55,7 @@ class UserScreen(EnhancedMDScreen):
         self._remove_rows_from_checked_rows()
     
     def _get_cells_from_checked_rows(self, index=0, cell_as_tuple=False):
-        rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        rows = get_checked_rows(self.main_table, self.checked_rows)
         print(f"_get_cells_from_checked_rows - {rows}")
 
         if not rows:
@@ -67,7 +67,7 @@ class UserScreen(EnhancedMDScreen):
         return cells
 
     def _remove_rows_from_checked_rows(self):
-        rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        rows = get_checked_rows(self.main_table, self.checked_rows)
         if not rows:
             return
         

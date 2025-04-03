@@ -9,7 +9,7 @@ from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.menu import MDDropdownMenu
 
-from front.core.constant import (
+from core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,

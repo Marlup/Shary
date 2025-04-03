@@ -3,7 +3,7 @@ import hashlib
 import base64
 import time
 #import datetime
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import secrets  # Secure nonce generation
 import time
 import uuid
@@ -13,9 +13,10 @@ import json
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 
-from front.core.constant import (
+from core.constant import (
     PATH_PRIVATE_KEY,
-    PATH_PUBLIC_KEY
+    PATH_PUBLIC_KEY,
+    PATH_SECRET_KEY
 )
 
 def hash_message(message: str|bytes):
@@ -47,9 +48,10 @@ def write_temp_decrypted_data(decrypted_data, path=".env"):
         file.write(decrypted_data)
 
 class RSACrypto:
-    def __init__(self, private_key=None, public_key=None):
+    def __init__(self, private_key=None, public_key=None, secret_key: str=None):
         self.private_key = private_key
         self.public_key = public_key
+        self.secret_key = secret_key
 
     def get_pub_key_bytes(self):
         pub_key_bytes = self.public_key.public_bytes(
@@ -67,7 +69,10 @@ class RSACrypto:
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
         return RSACrypto(private_key, private_key.public_key())
 
-    def save_keys(self, priv_path=PATH_PRIVATE_KEY, pub_path=PATH_PUBLIC_KEY):
+    def save_keys(self, priv_path=PATH_PRIVATE_KEY, 
+                  pub_path=PATH_PUBLIC_KEY,
+                  secret_path=PATH_SECRET_KEY
+                  ):
         if self.private_key:
             with open(priv_path, "wb") as f:
                 f.write(self.private_key.private_bytes(
@@ -79,6 +84,10 @@ class RSACrypto:
         if self.public_key:
             with open(pub_path, "wb") as f:
                 f.write(self.get_pub_key_bytes())
+
+        if self.secret_key:
+            with open(secret_path, "wb") as f:
+                f.write(self.secret_key.encode("utf-8"))
 
     @staticmethod
     def try_load_from_files(
@@ -110,6 +119,14 @@ class RSACrypto:
                 print(f"-----------\n\n public_key - {public_key}")
 
         return RSACrypto(private_key, public_key)
+
+    def load_secret_key(self, secret_path=PATH_SECRET_KEY):
+        if secret_path:
+            with open(secret_path, "rb") as f:
+                secret_key = f.read().decode("utf-8")
+                print(f"-----------\n\n secret_key - {secret_key}")
+
+        return secret_key
 
     def encrypt(self, plaintext: bytes) -> bytes:
         if not self.public_key:
@@ -150,6 +167,9 @@ class RSACrypto:
         except Exception:
             return False
     
+    def generate_secret_key(self, length=16):
+        return RSACrypto.generate_nonce(length=length)
+
     @staticmethod
     def make_bin_blob_to_base64(message):
         return base64.b64encode(message)  # ✅ safe string
@@ -160,9 +180,20 @@ class RSACrypto:
         return secrets.token_hex(length)
     
     @staticmethod
-    def get_current_utc_iso():
+    def get_current_utc_dt(return_datetime=True):
+        current_utc_dt = datetime.now(timezone.utc)
+        if return_datetime:
+            return current_utc_dt
         #return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        return datetime.now(timezone.utc).isoformat()
+        return current_utc_dt.isoformat()
+
+    @staticmethod
+    def get_dt_after_expiry_seconds(dt: datetime=None, extra_time: int=0):
+        if not dt:
+            dt = RSACrypto.get_current_utc_dt(return_datetime=True)
+        if extra_time == 0:
+            return dt
+        return dt + timedelta(seconds=extra_time)
 
     @staticmethod
     def compute_json_hash(data_dict):
@@ -268,9 +299,20 @@ class NonceStore():
         return secrets.token_hex(length)
     
     @staticmethod
-    def get_current_utc_iso():
+    def get_current_utc_dt(return_datetime=True):
+        current_utc_dt = datetime.now(timezone.utc)
+        if return_datetime:
+            return current_utc_dt
         #return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        return datetime.now(timezone.utc).isoformat()
+        return current_utc_dt.isoformat()
+
+    @staticmethod
+    def get_dt_after_expiry_seconds(dt: datetime=None, extra_time: int=0):
+        if not dt:
+            dt = RSACrypto.get_current_utc_dt(return_datetime=True)
+        if extra_time == 0:
+            return dt
+        return dt + datetime.timedelta(seconds=extra_time)
 
     @staticmethod
     def compute_json_hash(data_dict):

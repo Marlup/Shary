@@ -1,12 +1,12 @@
 import sqlite3
 from kivy.logger import Logger
 
-from front.core.constant import PATH_DB
-from front.core.query_schema import (
+from core.constant import PATH_DB
+from core.queries import (
     INSERT_REQUEST,
     DELETE_REQUEST_BY_RECEIVERS
 )
-from front.core.interfaces import IRequestRepository
+from core.interfaces import IRequestRepository
 
 class RequestRepository(IRequestRepository):
     def __init__(self, db_connection=None):

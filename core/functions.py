@@ -8,21 +8,40 @@ from io import StringIO
 from typing import Any
 from dotenv import load_dotenv
 
+from flask import Flask, request, jsonify
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
-from front.core.constant import (
+from core.constant import (
 
     FIREBASE_HOST,
     FIREBASE_PORT,
     PATH_ENV_VARIABLES
 )
 
-from front.core.dtos import SuperUserDTO
+from core.dtos import SuperUserDTO
 
 FIREBASE_ENDPOINT = f"http://{FIREBASE_HOST}:{FIREBASE_PORT}/shary-21b61/us-central1"
+
+def restrict_access():
+    allowed_ips = ['127.0.0.1']
+    if request.remote_addr not in allowed_ips:
+        return jsonify({"error": "Access forbidden"}), 403
+
+def open_file():
+    filename = request.args.get("filename")
+    if filename:
+        return jsonify({"message": f"Processing {filename}..."}), 200
+    else:
+        return jsonify({"error": "No filename provided."}), 400
+
+def run_flask():
+    backend_app = Flask(__name__)
+    backend_app.before_request(restrict_access)
+    backend_app.add_url_rule("/files/open", "open_file", open_file, methods=['GET'])
+    backend_app.run(host="127.0.0.1", port=5001)
 
 def is_dir_empty(path):
     return os.path.isdir(path) and len(os.listdir(path)) == 0
@@ -193,7 +212,7 @@ def information_panel(panel_name, message):
     message_popup = Popup(title=panel_name, content=return_layout, size_hint=(0.5, 0.4))
     message_popup.open()
 
-def get_safe_row_checks(table, checked_rows) -> list:
+def get_checked_rows(table, checked_rows) -> list:
     """Returns the manually tracked checked rows."""
     if table is None or not checked_rows:
         return []

@@ -2,14 +2,14 @@ from typing import List
 import sqlite3
 from kivy.logger import Logger
 
-from front.core.constant import PATH_DB
-from front.core.query_schema import (
+from core.constant import PATH_DB
+from core.queries import (
     INSERT_USER,
     SELECT_ALL_USERS,
     DELETE_USER_BY_USERNAME
 )
-from front.core.interfaces import IUserRepository
-from front.core.dtos import UserDTO
+from core.interfaces import IUserRepository
+from core.dtos import UserDTO
 
 class UserRepository(IUserRepository):
     def __init__(self, db_connection=None):

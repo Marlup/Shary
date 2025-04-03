@@ -9,11 +9,11 @@ from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.menu import MDDropdownMenu
 
-from front.core.func_utils import (
-    get_safe_row_checks,
+from core.functions import (
+    get_checked_rows,
 )
 
-from front.core.constant import (
+from core.constant import (
     FILE_FORMATS,
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
@@ -28,15 +28,15 @@ from front.core.constant import (
     PATH_SCHEMA_CHANNEL_CONTENT_DIALOG,
 )
 
-from front.core.class_utils import (
+from core.classes import (
     AddField,
     SendEmailDialog,
     SelectChannel,
     EnhancedMDScreen
 )
 
-from front.core.dtos import FieldDTO
-from front.repository.field_repository import FieldRepository
+from core.dtos import FieldDTO
+from repositories.field_repository import FieldRepository
 
 class FieldScreen(EnhancedMDScreen):
     def __init__(self, db_connection=None, **kwargs):
@@ -50,7 +50,7 @@ class FieldScreen(EnhancedMDScreen):
         self.main_table = None
 
     def _delete_fields(self):
-        checked_rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        checked_rows = get_checked_rows(self.main_table, self.checked_rows)
 
         if not checked_rows:
             return
@@ -65,7 +65,7 @@ class FieldScreen(EnhancedMDScreen):
         self._remove_rows_from_checked_rows()
     
     def _get_cells_from_checked_rows(self, index=0, cell_as_tuple=False):
-        rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        rows = get_checked_rows(self.main_table, self.checked_rows)
 
         cells = [
             (r[index], ) if cell_as_tuple else r[index] for r in rows
@@ -73,7 +73,7 @@ class FieldScreen(EnhancedMDScreen):
         return cells
 
     def _remove_rows_from_checked_rows(self):
-        rows = get_safe_row_checks(self.main_table, self.checked_rows)
+        rows = get_checked_rows(self.main_table, self.checked_rows)
 
         if not rows:
             return
@@ -161,12 +161,6 @@ class FieldScreen(EnhancedMDScreen):
         field.password = not field.password
         field.icon_right = "eye" if not field.password else "eye-off"
 
-    def generate_secret_key(self):
-        from random import choices
-        import string
-        key = ''.join(choices(string.ascii_letters + string.digits, k=16))
-        self.channel_selection_dialog.content_cls.ids.secret_key.text = key
-
     def show_menu(self, instance):
         menu_items = [
             {
@@ -209,8 +203,13 @@ class FieldScreen(EnhancedMDScreen):
         if channel == "Email":
             self.show_send_email_dialog()
         elif channel == "Cloud":
+            rows = get_checked_rows(self.main_table, self.checked_rows)
             self.manager.cloud_service.send_data(
-                rows, sender, recipients, on_request=False
+                self.manager.cryptographer,
+                rows, 
+                self.manager.super_user.username, 
+                self.get_checked_users(),
+                on_request=False
             )
     
     def show_send_email_dialog(self):
@@ -252,8 +251,8 @@ class FieldScreen(EnhancedMDScreen):
 
         filename = dialog_ids.filename_input.text.strip()
         file_format = "json"
-        rows = get_safe_row_checks(self.main_table, self.checked_rows)
-        users = self.get_selected_users()
+        rows = get_checked_rows(self.main_table, self.checked_rows)
+        users = self.get_checked_users()
 
         payload = self.manager.email_service.create_payload(rows, users, filename, file_format)
 
@@ -274,16 +273,17 @@ class FieldScreen(EnhancedMDScreen):
         self.manager.current = SCREEN_NAME_FILE_VISUALIZER
 
     def generate_secret_key(self):
-        secret_key = self.manager.cryptographer.generate_nonce()
+        new_secret_key = self.manager.cryptographer.generate_nonce()
         self.channel_selection_dialog.content_cls.ids.secret_key.hint_text = "secret_key"
-        self.channel_selection_dialog.content_cls.ids.secret_key.text = secret_key  # Optional: clear previous input
-    
+        self.channel_selection_dialog.content_cls.ids.secret_key.text = new_secret_key  # Optional: clear previous input
+        self.manager.cloud_service.set_secret_key(new_secret_key)
+
     def toggle_password_visibility(self):
         field = self.channel_selection_dialog.content_cls.ids.secret_key
         field.password = not field.password
         field.icon_right = "eye" if not field.password else "eye-off"
     
-    def get_selected_users(self):
+    def get_checked_users(self):
         return self.manager.get_screen(SCREEN_NAME_USER).get_checked_emails(index=1)
 
     def on_enter(self):

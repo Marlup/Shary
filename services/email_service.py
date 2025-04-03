@@ -3,14 +3,15 @@ import smtplib
 from email.message import EmailMessage
 from dotenv import load_dotenv
 
-from front.core.constant import (
+from core.constant import (
     MSG_DEFAULT_SEND_FILENAME,
     SMTP_SERVER,
     SMTP_SSL_PORT,
     FILE_FORMATS,
+    PATH_ENV_VARIABLES
 )
 
-from front.core.func_utils import (
+from core.functions import (
     parsed_fields_as_vertical_string,
     parsed_keys_as_vertical_string,
     get_selected_fields_as_req_json,
@@ -18,12 +19,12 @@ from front.core.func_utils import (
     information_panel
 )
 
-class EmailService:
-    def __init__(self):
-        load_dotenv("../.env")
-        self.sender_email = os.getenv("SHARY_ROOT_EMAIL")
-        self.sender_name = self.sender_email.split("@")[0]
-        self.sender_password = "ugtt iggn nnni dchj"  # Replace with a safer secret handling strategy
+class EmailService():
+    def __init__(self, main_email=None, username=None):
+        load_dotenv(PATH_ENV_VARIABLES)
+        self.main_email = os.getenv("SHARY_MAIN_EMAIL") if not main_email else main_email
+        self.username = self.main_email.split("@")[0] if not username else username
+        self.email_password = "ugtt iggn nnni dchj"  # Replace with a safer secret handling strategy
 
     def _send(self, message):
         try:

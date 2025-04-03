@@ -9,9 +9,7 @@ from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.dialog import MDDialog
 
-from front.core.constant import (
-    MSG_DEFAULT_REQUEST_FILENAME,
-    FILE_FORMATS,
+from core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
     DEFAULT_USE_PAGINATION,
@@ -22,12 +20,12 @@ from front.core.constant import (
     PATH_SCHEMA_REQUEST_DIALOG
 )
 
-from front.core.class_utils import (
+from core.classes import (
     AddRequestField,
     SendEmailDialog
 )
 
-from front.core.func_utils import (
+from core.functions import (
     information_panel,
 )
 

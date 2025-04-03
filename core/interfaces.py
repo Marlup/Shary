@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from front.core.dtos import FieldDTO, UserDTO, RequestDTO
+from core.dtos import FieldDTO, UserDTO, RequestDTO
 
 # Interfaces
 class IFieldRepository(ABC):

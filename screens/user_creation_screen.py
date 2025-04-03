@@ -5,13 +5,13 @@ from dotenv import set_key
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.dialog import MDDialog
 
-from front.core.constant import (
+from core.constant import (
     SCREEN_NAME_LOGIN,
     SCREEN_NAME_USER_CREATION,
     PATH_ENV_VARIABLES
 )
 
-from front.core.dtos import SuperUserDTO
+from core.dtos import SuperUserDTO
 
 class UserCreationScreen(Screen):
     def __init__(self, **kwargs):
@@ -63,17 +63,17 @@ class UserCreationScreen(Screen):
                                                    extension=0
                                                    )
         
-        # Remove the user creation screen after successful registration
-        self.manager.current = SCREEN_NAME_LOGIN
-
-        # Load the cryptographer
-        self.manager.load_cryptographer()
-
         # Save ENV variables
         set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_EMAIL", email)
         set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_USERNAME", username)
         set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_PASSWORD", password)
         set_key(PATH_ENV_VARIABLES, "SHARY_MAIN_PUBKEY_LIVE", "false")
+
+        # Load and initialize the services
+        # - keys and secrets
+        # - email
+        # - cloud (firebase, etc)
+        self.manager.load_services()
         
         # Upload the private keys to the cloud service
         ok_upload = self.manager.cloud_service.upload_pubkey(
@@ -85,6 +85,9 @@ class UserCreationScreen(Screen):
             self.show_dialog("Success", "User created successfully!")
         else:
             self.show_dialog("Error", "User wasn't created. Conflict at pubkey upload!")
+
+        self.manager.load_login_screen()
+        self.manager.current = SCREEN_NAME_LOGIN
 
     def show_dialog(self, title, message):
         dialog = MDDialog(title=title, text=message)

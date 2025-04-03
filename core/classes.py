@@ -12,13 +12,13 @@ from kivymd.uix.boxlayout import MDBoxLayout
 
 import sqlite3
 
-from front.core.func_utils import (
+from core.functions import (
     load_user_credentials,
     information_panel
 )
 
-from front.core.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
-from front.security.crypto import RSACrypto
+from core.constant import FILE_FORMATS, MSG_DEFAULT_SEND_FILENAME
+from security.crypto import RSACrypto
 
 class Utils():
     @staticmethod

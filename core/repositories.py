@@ -18,7 +18,7 @@ from front.core.constant import (
     PATH_DB
 )
 
-from front.core.query_schema import *
+from front.core.queries import *
 
 class FieldRepository(IFieldRepository):
     def __init__(self, db_connection=None):
