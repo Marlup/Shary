@@ -35,36 +35,30 @@ class CloudService():
 
     def upload_pubkey(self, cryptographer, owner: str):
         try:
-            url = f"{self.base_endpoint}/upload_pubkey"
             url = self.endpoint_upload_pubkey
             
-            timestamp = cryptographer.get_current_utc_iso()
-            expires_at = datetime.datetime.fromisoformat(timestamp) + datetime.datetime(second=self.document_expiration_time),
             owner_hash = hash_message(owner)
+            timestamp = cryptographer.get_current_utc_iso()
+            timestamp_str = str(int(timestamp))
+            expires_at = datetime.datetime.fromisoformat(timestamp) + \
+                  datetime.datetime(second=self.document_expiration_time),
+            expires_at_str = str(int(expires_at))
             public_key = cryptographer.get_pub_key_string()
-            data_signature = ".".join([#timestamp, 
-                                       owner_hash,
-                                       self.secret_key, 
-                                       ]) \
-                                .encode("utf-8")
+            data_encoded = ".".join([timestamp_str, owner_hash, public_key]) \
+                              .encode("utf-8")
             
-            verification_hash = hash_message(data_signature)
-            #print(f"verification_hash - {verification_hash}")
             # Bytes signature to base64
-            signature_b64 = cryptographer.make_bin_blob_to_base64(
-                cryptographer.sign(data_signature)
+            signature = cryptographer.make_blob_to_base64(
+                cryptographer.sign(data_encoded)
             ).decode("utf-8")  # ✅ safe string
-
-            #print(f"signature base64 - {signature_b64}")
 
             payload = {
                 "owner": owner_hash,
-                "consumer": "",
-                "timestamp": timestamp,
-                "expires_at": expires_at,
+                "creation_at": timestamp_str,
+                "expires_at": expires_at_str,
                 "pub_key": public_key,
-                "verification_hash": verification_hash,
-                "signature": signature_b64
+                "verification_hash": hash_message(data_encoded),
+                "signature": signature
             }
 
             response = requests.post(url, json=payload)
@@ -76,19 +70,10 @@ class CloudService():
             print(f"Error at upload_pubkey: {e}")
             return False
 
-    def get_other_pubkey(self, owner: str, timestamp: str):
+    def get_other_pubkey(self, owner: str):
         owner_hash = hash_message(owner)
-        verification_hash = hash_message(
-            ".".join(
-                [
-                    #timestamp, 
-                    owner_hash,
-                    self.secret_key
-                ]
-                    )
-                    )
         
-        url = f"{self.endpoint_get_pubkey}?verification_hash={verification_hash}"
+        url = f"{self.endpoint_get_pubkey}?owner={owner_hash}"
         response = requests.get(url)
         if response.status_code == 200:
             return response.json()["pub_key"]
@@ -113,62 +98,56 @@ class CloudService():
             data = get_selected_fields_as_json(rows, as_dict=True)
             mode = "send"
 
-        # Owner and consumers
+        # Owner        
         owner_hash = hash_message(owner)
-        consumers_hash = [hash_message(consumer) for consumer in consumers]
-        consumers_hash_string = ",".join(consumers_hash)
-        
+
         # Timestamp and expiration timestamp
         timestamp = cryptographer.get_current_utc_dt()
-        timestamp_str = timestamp.isoformat()
-        expires_at_str = cryptographer.get_dt_after_expiry_seconds(
+        timestamp_str = str(int(timestamp))
+        expires_at = cryptographer.get_dt_after_expiry_seconds(
             timestamp,
             self.document_expiration_time
-            ).isoformat()
+            )
+        expires_at_str = str(int(expires_at))
         
         # Data
         data_str = json.dumps(data) if not isinstance(data, str) else data
         encrypted_data = cryptographer.encrypt(data_str.encode("utf-8"))
-        encoded_data = cryptographer.make_bin_blob_to_base64(encrypted_data)
-        encoded_data_str = encoded_data.decode("utf-8")
+        encrypted_data_str = cryptographer.make_blob_to_base64(encrypted_data).decode("utf-8"),
         
-        # Verification and Authentication 
-        verification_string = ".".join([#timestamp_str,
-                                        owner_hash,
-                                        consumers_hash_string,
-                                        self.secret_key,
-                                        ]) \
-                                 .encode("utf-8")
-    
-        verification_hash = hash_message(verification_string)
-        signature_data = ".".join([timestamp_str,
-                                   self.secret_key,
-                                   owner_hash, 
-                                   consumers_hash_string,
-                                   encoded_data_str]) \
-                            .encode("utf-8")
-        signature = cryptographer.sign(
-            cryptographer.make_bin_blob_to_base64(signature_data)
-            )
-        signature_str = str(cryptographer.make_bin_blob_to_base64(signature).decode("utf-8"))
+        for consumer in consumers:
+            # Consumers
+            consumer_hash = hash_message(consumer)
+        
+            # Verification and Authentication 
+            data_encoded = ".".join([
+                timestamp_str,
+                owner_hash,
+                consumer_hash,
+                encrypted_data_str
+                ]).encode("utf-8")
+            
+            signature = cryptographer.sign(
+                cryptographer.make_blob_to_base64(data_encoded)
+                )
 
-        payload = {
-            "mode": mode,
-            "owner": owner_hash,
-            "consumers": consumers_hash,
-            "creation_at": timestamp_str,
-            "expires_at": expires_at_str,
-            "data": signature_str,
-            "verification_hash": verification_hash,
-            "signature": signature_str,
-        }
+            payload = {
+                "mode": mode,
+                "owner": owner_hash,
+                "consumer": consumer_hash,
+                "creation_at": timestamp_str,
+                "expires_at": expires_at_str,
+                "data": encrypted_data_str,
+                "verification_hash": hash_message(data_encoded),
+                "signature": cryptographer.make_blob_to_base64(signature).decode("utf-8"),
+            }
 
-        try:
-            response = requests.post(url, json=payload)
-            #response.raise_for_status()
-            print(f"✅ Data sent to Firebase for {consumers_hash}: {response.json()}")
-        except Exception as e:
-            print(f"❌ Failed to send to Firebase: {e}")
+            try:
+                response = requests.post(url, json=payload)
+                #response.raise_for_status()
+                print(f"✅ Data sent to Firebase for consumer {consumer_hash}: {response.json()}")
+            except Exception as e:
+                print(f"❌ Failed to send data to Firebase for consumer {consumer_hash}: {e}")
 
     def add_consumer_to_document(self, doc_id: str, new_consumers: list[str]):
         try:
