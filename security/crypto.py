@@ -48,9 +48,10 @@ def write_temp_decrypted_data(decrypted_data, path=".env"):
         file.write(decrypted_data)
 
 class RSACrypto:
-    def __init__(self, private_key=None, public_key=None, secret_key: str=None):
+    def __init__(self, private_key=None, public_key=None, other_public_key=None, secret_key: str=None):
         self.private_key = private_key
         self.public_key = public_key
+        self.other_public_key = other_public_key
         self.secret_key = secret_key
 
     def get_pub_key_bytes(self):
@@ -128,10 +129,12 @@ class RSACrypto:
 
         return secret_key
 
-    def encrypt(self, plaintext: bytes) -> bytes:
-        if not self.public_key:
+    def encrypt(self, plaintext: bytes, public_key=None) -> bytes:
+        if not public_key:
+            public_key = self.public_key
+        if not public_key:
             raise ValueError("Public key not loaded.")
-        return self.public_key.encrypt(
+        return public_key.encrypt(
             plaintext,
             padding.OAEP(mgf=padding.MGF1(hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
         )
