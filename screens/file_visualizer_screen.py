@@ -15,7 +15,6 @@ from core.constant import (
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
     PATH_DATA_DOWNLOAD,
-    SCREEN_NAME_FIELD,
     SCREEN_NAME_FILE_VISUALIZER,
 )
 
@@ -115,11 +114,10 @@ class FileVisualizerScreen(MDScreen):
         for key, value in data.items():
             self.main_table.add_row((key, str(value)))
 
+    def go_to_fields_screen(self):
+        self.manager.go_to_field_screen("left")
+
     def on_enter(self):
         self._initialize_table()
         self.json_files = self._get_json_files()
         self.menu = self._create_menu()
-
-    def go_to_fields_screen(self):
-        self.manager.transition = SlideTransition(direction="left", duration=0.4)
-        self.manager.current = SCREEN_NAME_FIELD

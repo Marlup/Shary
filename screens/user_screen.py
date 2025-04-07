@@ -1,6 +1,5 @@
 # --- source/users_screen.py ---
 from kivy.lang import Builder
-from kivy.uix.screenmanager import SlideTransition
 from kivy.metrics import dp
 from kivy.logger import Logger
 from kivymd.uix.button import MDRaisedButton
@@ -56,7 +55,6 @@ class UserScreen(EnhancedMDScreen):
     
     def _get_cells_from_checked_rows(self, index=0, cell_as_tuple=False):
         rows = get_checked_rows(self.main_table, self.checked_rows)
-        print(f"_get_cells_from_checked_rows - {rows}")
 
         if not rows:
             return
@@ -77,8 +75,8 @@ class UserScreen(EnhancedMDScreen):
             self.main_table.remove_row(tuple(row))
             self.checked_rows.remove(row)
 
-    def _add_user(self, username, email, phone=0, phone_ext=0):
-        user = UserDTO(username=username, email=email, phone=phone, extension=phone_ext)
+    def _add_user(self, username, email):
+        user = UserDTO(username=username, email=email)
         self.user_repo.add_user(user)
         self.main_table.add_row((username, email, ""))
     
@@ -133,21 +131,19 @@ class UserScreen(EnhancedMDScreen):
             self._add_user(username, email)
             self.dialog.dismiss()
             #toast(f"User '{username}' added successfully!")
-            MDSnackbar(f"User '{username}' added successfully!").show()
+            MDSnackbar(f"User '{username}' added successfully!").open()
         else:
             #toast("Both Username and Email are required.")
-            MDSnackbar("Both Username and Email are required.").show()
+            MDSnackbar("Both Username and Email are required.").open()
 
     def get_checked_emails(self, index):
         return self._get_cells_from_checked_rows(index)
     
     def go_to_fields_screen(self):
-        self.manager.transition = SlideTransition(direction="right", duration=0.4)
-        self.manager.current = SCREEN_NAME_FIELD
+        self.manager.go_to_user_screen("right")
     
     def go_to_requests_screen(self):
-        self.manager.transition = SlideTransition(direction="left", duration=0.4)
-        self.manager.current = SCREEN_NAME_REQUEST
+        self.manager.g_oto_request_screen("left")
 
     def on_enter(self):
         self._load_users_from_db()

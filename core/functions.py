@@ -6,8 +6,8 @@ import yaml
 import xml.etree.ElementTree as ET
 from io import StringIO
 from typing import Any
-from dotenv import load_dotenv
 
+import keyring
 from flask import Flask, request, jsonify
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -21,7 +21,7 @@ from core.constant import (
     PATH_ENV_VARIABLES
 )
 
-from core.dtos import SuperUserDTO
+from core.dtos import OwnerDTO
 
 FIREBASE_ENDPOINT = f"http://{FIREBASE_HOST}:{FIREBASE_PORT}/shary-21b61/us-central1"
 
@@ -41,14 +41,13 @@ def run_flask():
     backend_app = Flask(__name__)
     backend_app.before_request(restrict_access)
     backend_app.add_url_rule("/files/open", "open_file", open_file, methods=['GET'])
-    backend_app.run(host="127.0.0.1", port=5001)
+    backend_app.run(host="127.0.0.1", port=5000)
 
 def is_dir_empty(path):
     return os.path.isdir(path) and len(os.listdir(path)) == 0
 
 def load_user_credentials():
-    load_dotenv(PATH_ENV_VARIABLES)
-    sender_email = os.getenv("SHARY_ROOT_EMAIL")  # Replace with your email
+    sender_email = keyring.get_password("shary_app", "owner_email")  # Replace with your email
     sender_password = "ugtt iggn nnni dchj"  # Replace with your app password
     
     return sender_email, sender_password

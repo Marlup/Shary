@@ -18,8 +18,7 @@ class UserRepository(IUserRepository):
     def add_user(self, user: UserDTO) -> None:
         cursor = self.db_connection.cursor()
         try:
-            cursor.execute(INSERT_USER, 
-                           (user.username, user.email, user.phone, user.extension))
+            cursor.execute(INSERT_USER, (user.username, user.email))
             self.db_connection.commit()
         except sqlite3.IntegrityError:
             Logger.warning(f"IntegrityError: INSERT operation attempt failed for user {user.username}. Potential duplication.")
@@ -31,7 +30,7 @@ class UserRepository(IUserRepository):
         cursor.execute(SELECT_ALL_USERS)
         records = cursor.fetchall()
         cursor.close()
-        return [UserDTO(username=r[0], email=r[1], phone=r[2], extension=r[3], date_added=r[4]) for r in records]
+        return [UserDTO(username=r[0], email=r[1]) for r in records]
 
     def delete_user(self, username: str) -> None:
         cursor = self.db_connection.cursor()

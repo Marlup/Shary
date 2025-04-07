@@ -14,14 +14,11 @@ class RequestDTO(BaseModel):
     creation_date: Optional[str|datetime] = "now"
 
 class UserDTO(BaseModel):
-    username: str
-    email: str
-    phone: Optional[int] = 0
-    extension: Optional[int] = 0
+    username: str | None
+    email: str | None
     date_added: Optional[str|datetime] = "now"
 
-class SuperUserDTO(BaseModel):
-    username: str
-    email: str
-    phone: Optional[int] = 0
-    extension: Optional[int] = 0
+class OwnerDTO(BaseModel):
+    username: str | None
+    email: str | None
+    safe_password: str | None

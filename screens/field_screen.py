@@ -21,12 +21,12 @@ from core.constant import (
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
     SCREEN_NAME_FIELD,
-    SCREEN_NAME_USER,
-    SCREEN_NAME_FILE_VISUALIZER,
     PATH_SCHEMA_FIELD_DIALOG,
     PATH_SCHEMA_SEND_EMAIL_DIALOG,
     PATH_SCHEMA_CHANNEL_CONTENT_DIALOG,
 )
+
+from core.enums import StatusDataSentDb
 
 from core.classes import (
     AddField,
@@ -177,8 +177,7 @@ class FieldScreen(EnhancedMDScreen):
 
         self.menu_channel = MDDropdownMenu(
             caller=instance,
-            items=menu_items,
-            width_mult=3
+            items=menu_items
         )
         self.menu_channel.open()
 
@@ -204,14 +203,17 @@ class FieldScreen(EnhancedMDScreen):
             self.show_send_email_dialog()
         elif channel == "Cloud":
             rows = get_checked_rows(self.main_table, self.checked_rows)
-            self.manager.cloud_service.send_data(
-                self.manager.cryptographer,
-                rows, 
-                self.manager.super_user.username, 
-                self.get_checked_users(),
-                on_request=False
-            )
-    
+            consumers = self._get_checked_users(),
+            results = self._send_data_to_cloud(rows, consumers, False)
+        
+        if channel != "Cloud":
+            return
+        self.show_channel_result(results)
+        
+    def show_channel_result(self, results):
+        insertions = [user for user, status in results.items if status != StatusDataSentDb.Stored]
+        MDSnackbar(f"Stored {len(insertions)} of {len(results)} data documents").open()
+
     def show_send_email_dialog(self):
         if not self.email_dialog:
             self.email_dialog = MDDialog(
@@ -252,7 +254,7 @@ class FieldScreen(EnhancedMDScreen):
         filename = dialog_ids.filename_input.text.strip()
         file_format = "json"
         rows = get_checked_rows(self.main_table, self.checked_rows)
-        users = self.get_checked_users()
+        users = self._get_checked_users()
 
         payload = self.manager.email_service.create_payload(rows, users, filename, file_format)
 
@@ -265,12 +267,10 @@ class FieldScreen(EnhancedMDScreen):
 
 # -------- callbacks --------
     def go_to_users_screen(self):
-        self.manager.transition = SlideTransition(direction="left", duration=0.4)
-        self.manager.current = SCREEN_NAME_USER
+        self.manager.go_to_user_screen("left")
 
     def go_to_field_visualizer_screen(self):
-        self.manager.transition = SlideTransition(direction="right", duration=0.4)
-        self.manager.current = SCREEN_NAME_FILE_VISUALIZER
+        self.manager.go_to_user_screen("right")
 
     def generate_secret_key(self):
         new_secret_key = self.manager.cryptographer.generate_nonce()
@@ -283,8 +283,11 @@ class FieldScreen(EnhancedMDScreen):
         field.password = not field.password
         field.icon_right = "eye" if not field.password else "eye-off"
     
-    def get_checked_users(self):
-        return self.manager.get_screen(SCREEN_NAME_USER).get_checked_emails(index=1)
+    def _get_checked_users(self):
+        return self.manager.get_checked_users()
+
+    def _send_data_to_cloud(self, data_rows, consumers, on_request=False):
+        self.manager.send_data_to_cloud(data_rows, consumers, on_request)
 
     def on_enter(self):
         self._load_fields_from_db()

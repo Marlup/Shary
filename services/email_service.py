@@ -1,7 +1,6 @@
 import os
 import smtplib
 from email.message import EmailMessage
-from dotenv import load_dotenv
 
 from core.constant import (
     MSG_DEFAULT_SEND_FILENAME,
@@ -21,9 +20,8 @@ from core.functions import (
 
 class EmailService():
     def __init__(self, main_email=None, username=None):
-        load_dotenv(PATH_ENV_VARIABLES)
-        self.main_email = os.getenv("SHARY_MAIN_EMAIL") if not main_email else main_email
-        self.username = self.main_email.split("@")[0] if not username else username
+        self.main_email = main_email
+        self.username = username
         self.email_password = "ugtt iggn nnni dchj"  # Replace with a safer secret handling strategy
 
     def _send(self, message):

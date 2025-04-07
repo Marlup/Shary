@@ -1,5 +1,5 @@
 kivy
-kivymd
+kivymd==2.0.0
 pyyaml
 python-dotenv
 flask
@@ -18,3 +18,5 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 pytest
+bcrypt
+keyring

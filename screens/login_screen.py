@@ -1,19 +1,16 @@
 # --- source/login_screen.py ---
-import os
-from dotenv import load_dotenv
 
 from kivy.uix.screenmanager import Screen
 from kivy.utils import platform
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.label import MDLabel
 from kivy.clock import Clock
+import keyring
+import bcrypt
 
-from core.constant import (
-    SCREEN_NAME_LOGIN,
-    SCREEN_NAME_FIELD
-)
+from core.constant import SCREEN_NAME_LOGIN
 
-from core.dtos import SuperUserDTO
+from core.dtos import OwnerDTO
 
 if platform == "android":
     from jnius import autoclass
@@ -45,27 +42,26 @@ class LoginScreen(Screen):
     def check_login(self, instance):
         username = self.ids.username_input.text.strip()
         password = self.ids.password_input.text.strip()
-
-        if username == os.getenv("SHARY_MAIN_USERNAME") \
-        and password == os.getenv("SHARY_MAIN_PASSWORD"):
+        
+        stored_username = keyring.get_password("shary_app", "owner_username")
+        stored_safe_password = keyring.get_password("shary_app", "owner_safe_password")
+        safe_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        
+        if username == stored_username \
+        and safe_password == stored_safe_password:
             # Remove the user creation screen after successful registration
-            self.manager.load_other_screens()
+            self._load_other_screens()
 
             # Remove the login screen after validating credentials and 
             # pressing the login button
-            self.manager.current = SCREEN_NAME_FIELD
+            self._go_to_field_screen()
         else:
             #toast("Invalid credentials")
             MDSnackbar("Invalid credentials").open()
             pass
 
         # Load super user
-        self.manager.super_user = SuperUserDTO(username=username, 
-                                               email=os.getenv("SHARY_MAIN_EMAIL")
-                                               )
-        
-    def go_field_screen(self):
-        self.manager.current = SCREEN_NAME_FIELD
+        self._get_owner()
 
     def biometric_auth(self, instance):
         # Remove the user creation screen after successful registration
@@ -80,19 +76,17 @@ class LoginScreen(Screen):
             size_hint_x=None,
             width="280dp",
             pos_hint={"center_x": 0.5},
-            y="40dp",
-            bg_color=(0, 0, 1, 1)
+            y="40dp"
         ).open()
 
-
-        self.manager.load_other_screens()    
+        self._load_other_screens()    
         Clock.schedule_once(lambda _: self.go_field_screen(), 1)
 
         if FINGERPRINT_AVAILABLE:
             activity = PythonActivity.mActivity
             keyguard_manager = activity.getSystemService(Context.KEYGUARD_SERVICE)
             if keyguard_manager.isKeyguardSecure():
-                snackbar = MDSnackbar(
+                MDSnackbar(
                     MDLabel(
                         text="Biometric authentication successful",
                         theme_text_color="Custom",
@@ -102,11 +96,11 @@ class LoginScreen(Screen):
                     width="280dp",
                     pos_hint={"center_x": 0.5},
                     y="40dp",
-                )
-                snackbar.open()
+                ).open()
+
                 # Remove the login screen after validating biometrical-credentials and 
                 # pressing the login button
-                self.manager.current = SCREEN_NAME_FIELD
+                self._go_to_field_screen()
             else:
                 MDSnackbar(
                     MDLabel(
@@ -124,16 +118,21 @@ class LoginScreen(Screen):
             #MDSnackbar("Biometric authentication not available on this device").open()
             pass
 
-        # Delay screen switch by 1 second
-                # Load super user
-        self.manager.super_user = SuperUserDTO(
-            username=os.getenv("SHARY_MAIN_USERNAME"), 
-            email=os.getenv("SHARY_MAIN_EMAIL")
-            )
-
-    def on_enter(self):
-        load_dotenv(".env")
+        # Load super user
+        self._get_owner()
     
+    def _load_other_screens(self):
+        self.manager.load_other_screens()
+    
+    def _go_to_field_screen(self):
+        self.manager.go_to_field_screen("left")
+
+    def _get_owner(self):
+        self.manager.get_owner()
+
+    def _set_owner(self, username, email, safe_password):
+        self.manager.set_owner(username, email, safe_password)
+
     def on_leave(self):
         # Load the services
         self.manager.load_services()

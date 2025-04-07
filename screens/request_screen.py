@@ -14,7 +14,6 @@ from core.constant import (
     DEFAULT_ROW_VALUE_WIDTH,
     DEFAULT_USE_PAGINATION,
     DEFAULT_NUM_ROWS_PAGE,
-    SCREEN_NAME_FIELD,
     SCREEN_NAME_REQUEST,
     SCREEN_NAME_USER,
     PATH_SCHEMA_REQUEST_DIALOG
@@ -140,7 +139,7 @@ class RequestScreen(MDScreen):
         rows_to_send = self.main_table.get_row_checks()
 
         # Obtener destinatarios desde la pantalla de usuarios
-        recipients = self.manager.get_screen(SCREEN_NAME_USER).get_checked_emails(index=1)
+        recipients = self._get_checked_users()
 
         # Preparar payload con validación dentro del servicio
         payload = self.manager.email_service.create_payload(
@@ -165,12 +164,13 @@ class RequestScreen(MDScreen):
             self.email_dialog.dismiss()
 
     def go_to_fields_screen(self):
-        self.manager.transition = SlideTransition(direction="left", duration=0.4)
-        self.manager.current = SCREEN_NAME_FIELD
+        self.manager.go_to_field_screen("left")
 
     def go_to_users_screen(self):
-        self.manager.transition = SlideTransition(direction="right", duration=0.4)
-        self.manager.current = SCREEN_NAME_USER
+        self.manager.go_to_user_screen("right")
+    
+    def _get_checked_users(self):
+        return self.manager.get_checked_users()
 
     def on_enter(self):
         self._initialize_table()

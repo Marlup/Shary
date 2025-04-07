@@ -3,22 +3,22 @@ from typing import List
 import sqlite3
 from kivy.logger import Logger
 
-from front.core.interfaces import (
+from core.interfaces import (
     IFieldRepository,
     IRequestRepository,
     IUserRepository
 )
 
-from front.core.dtos import (
+from core.dtos import (
     FieldDTO,
     UserDTO
 )
 
-from front.core.constant import (
+from core.constant import (
     PATH_DB
 )
 
-from front.core.queries import *
+from core.queries import *
 
 class FieldRepository(IFieldRepository):
     def __init__(self, db_connection=None):

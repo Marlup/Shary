@@ -1,5 +1,11 @@
 from enum import Enum
 
+class StatusDataSentDb(Enum):
+    STORED = "STORED"
+    EXISTS = "EXISTS"
+    MISSING_FIELD = "MISSING_FIELD"
+    ERROR = "ERROR"
+
 class DataType(Enum):
     # Basic Numeric Types
     INTEGER = "INTEGER"
