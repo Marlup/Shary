@@ -5,12 +5,14 @@ from kivy.utils import platform
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.label import MDLabel
 from kivy.clock import Clock
-import keyring
-import bcrypt
+from kivy.logger import Logger
+
+
+from controller.app_controller import AppController
 
 from core.constant import SCREEN_NAME_LOGIN
 
-from core.dtos import OwnerDTO
+from core.session import CurrentSession
 
 if platform == "android":
     from jnius import autoclass
@@ -22,8 +24,11 @@ else:
 FINGERPRINT_AVAILABLE = False
 
 class LoginScreen(Screen):
-    def __init__(self, **kwargs):
+    def __init__(self, controller: AppController, **kwargs):
         super().__init__(name=SCREEN_NAME_LOGIN, **kwargs)
+        
+        self.controller = controller
+        self.session: CurrentSession = CurrentSession.get_instance()
 
     def focus_next_mdtextfield(self):
         if self.manager.current != SCREEN_NAME_LOGIN:
@@ -39,31 +44,31 @@ class LoginScreen(Screen):
         if hasattr(self.children[next_index], "focus"):
             self.children[next_index].focus = True
 
-    def check_login(self, instance):
-        username = self.ids.username_input.text.strip()
-        password = self.ids.password_input.text.strip()
-        
-        stored_username = keyring.get_password("shary_app", "owner_username")
-        stored_safe_password = keyring.get_password("shary_app", "owner_safe_password")
-        safe_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-        
-        if username == stored_username \
-        and safe_password == stored_safe_password:
+    def check_login(self):
+        # Get credentials from UI
+        username = self._get_ui_username()
+        password = self._get_ui_password()
+
+        # Try login
+        login_succesful = self.session.try_login(username, password)
+
+        if login_succesful:
+            Logger.info(f"User logged-in by input credentials.")
+
+            # Load cryptographic keys
+            self.session.load_cryptographic_keys()
+            
             # Remove the user creation screen after successful registration
             self._load_other_screens()
 
             # Remove the login screen after validating credentials and 
             # pressing the login button
-            self._go_to_field_screen()
+            self._go_to_fields_screen()
         else:
-            #toast("Invalid credentials")
             MDSnackbar("Invalid credentials").open()
-            pass
-
-        # Load super user
-        self._get_owner()
-
-    def biometric_auth(self, instance):
+    
+    # TODO Bring the logic to session class
+    def biometric_auth(self):
         # Remove the user creation screen after successful registration
         
         MDSnackbar(
@@ -79,8 +84,14 @@ class LoginScreen(Screen):
             y="40dp"
         ).open()
 
+        # todo remove next 3 lines as they are meant to be used for testing
         self._load_other_screens()    
-        Clock.schedule_once(lambda _: self.go_field_screen(), 1)
+        # Load cryptographic keys
+        self.session.load_cryptographic_keys()
+        Clock.schedule_once(lambda _: self._go_to_fields_screen(), 1)
+        
+        Logger.info(f"Entered biometrics mode.")
+        Logger.info(f"User logged-in by input biometrics.")
 
         if FINGERPRINT_AVAILABLE:
             activity = PythonActivity.mActivity
@@ -100,7 +111,15 @@ class LoginScreen(Screen):
 
                 # Remove the login screen after validating biometrical-credentials and 
                 # pressing the login button
-                self._go_to_field_screen()
+
+                Logger.info(f"User logged-in by input biometrics.")
+
+                # Load cryptographic keys
+                self.session.load_cryptographic_keys()
+
+                # Remove the login screen after validating credentials and 
+                # pressing the login button
+                self._go_to_fields_screen()
             else:
                 MDSnackbar(
                     MDLabel(
@@ -117,23 +136,24 @@ class LoginScreen(Screen):
         else:
             #MDSnackbar("Biometric authentication not available on this device").open()
             pass
-
-        # Load super user
-        self._get_owner()
     
+    #  ----- UI entrypoints -----
+    # UI Getters
+    def _get_ui_username(self) -> str:
+        return self.ids.username_input.text.strip()
+
+    def _get_ui_password(self) -> str:
+        return self.ids.password_input.text.strip()
+
+    # Screen Manager
     def _load_other_screens(self):
         self.manager.load_other_screens()
     
-    def _go_to_field_screen(self):
-        self.manager.go_to_field_screen("left")
+    def _go_to_fields_screen(self):
+        self.manager.go_to_fields_screen("left")
 
-    def _get_owner(self):
-        self.manager.get_owner()
-
-    def _set_owner(self, username, email, safe_password):
-        self.manager.set_owner(username, email, safe_password)
-
+    # callbacks current screen events
     def on_leave(self):
         # Load the services
-        self.manager.load_services()
-        
+        #self.manager.load_services()
+        pass

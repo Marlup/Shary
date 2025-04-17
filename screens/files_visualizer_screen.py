@@ -9,25 +9,71 @@ from kivymd.uix.datatables import MDDataTable
 from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.menu import MDDropdownMenu
 
+from controller.app_controller import AppController
+from core.functions import (
+    get_json_files,
+)
+
 from core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_ROW_VALUE_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
     PATH_DATA_DOWNLOAD,
-    SCREEN_NAME_FILE_VISUALIZER,
+    SCREEN_NAME_FILES_VISUALIZER,
 )
 
-class FileVisualizerScreen(MDScreen):
-    def __init__(self, **kwargs):
-        super().__init__(name=SCREEN_NAME_FILE_VISUALIZER, **kwargs)
-        
+class FilesVisualizerScreen(MDScreen):
+    def __init__(self, controller: AppController, **kwargs):
+        super().__init__(name=SCREEN_NAME_FILES_VISUALIZER, **kwargs)
+        self.controller = controller
+
         self.main_table = None
         self.dialog = None
         self.selected_file = None
-        self.json_files = self._get_json_files()
+        self.json_files = get_json_files()
         self.menu = None  # Don't create menu here!
-        
+    
+    def show_menu(self):
+        """Display the dropdown menu."""
+        self.menu.open()
+
+    def load_json_data(self, filename):
+        """Load data from the selected JSON file and update the table."""
+        # Check whether same file was selected
+        if filename == self.selected_file:
+            MDSnackbar("Same file selected. No changes made.")
+            return
+        self.selected_file = filename
+
+        path_current_file = os.path.join(PATH_DATA_DOWNLOAD, filename)
+        try:
+            with open(path_current_file, "r") as f:
+                data: dict = json.load(f)
+                self._update_table(data.get("data", {}))
+
+        except Exception as e:
+            Logger.error(f"Error loading JSON: {e}")
+            MDSnackbar("Error loading file.")
+
+    # Screen transitions
+    def go_to_fields_screen(self):
+        self.manager.go_to_fields_screen("left")
+
+    # Screens callback
+    def on_enter(self):
+        """Called when the screen is entered, ensuring UI is loaded before creating menu."""
+        self._initialize_table()
+        self.json_files = get_json_files()
+
+        # Ensure menu is only created once after UI loads
+        if self.menu is None:
+            self.menu = self._create_menu()
+
+    def on_leave(self):
+        self.selected_file = ""
+
+    # ----- Internal methods -----
     def _initialize_table(self):
         """Initialize an empty table with Key-Value columns."""
         if self.main_table:
@@ -47,23 +93,6 @@ class FileVisualizerScreen(MDScreen):
         )
         
         self.ids.table_container.add_widget(self.main_table)
-    
-    def _get_json_files(self):
-        """Retrieve available JSON files from a directory."""
-        if not os.path.exists(PATH_DATA_DOWNLOAD):
-            os.makedirs(PATH_DATA_DOWNLOAD)
-        
-        downloaded_files = os.listdir(PATH_DATA_DOWNLOAD)
-        return [f for f in downloaded_files if f.endswith(".json")]
-
-    def on_enter(self):
-        """Called when the screen is entered, ensuring UI is loaded before creating menu."""
-        self._initialize_table()
-        self.json_files = self._get_json_files()
-
-        # Ensure menu is only created once after UI loads
-        if self.menu is None:
-            self.menu = self._create_menu()
 
     def _create_menu(self):
         """Create a dropdown menu with available JSON files."""
@@ -85,39 +114,8 @@ class FileVisualizerScreen(MDScreen):
             width_mult=4,
         )
     
-    def show_menu(self):
-        """Display the dropdown menu."""
-        self.menu.open()
-
-    def load_json_data(self, filename):
-        """Load data from the selected JSON file and update the table."""
-        if filename == self.selected_file:
-            #toast("Same file selected. No changes made.")
-            MDSnackbar("Same file selected. No changes made.")
-            return
-
-        self.selected_file = filename
-        file_path = os.path.join(PATH_DATA_DOWNLOAD, filename)
-        
-        try:
-            with open(file_path, "r") as f:
-                data = json.load(f)
-                self._update_table(data.get("data", {}))
-        except Exception as e:
-            Logger.error(f"Error loading JSON: {e}")
-            #toast("Error loading file.")
-            MDSnackbar("Error loading file.")
-
-    def _update_table(self, data):
+    def _update_table(self, data: dict):
         """Update the table with new data."""
         self.main_table.row_data = []
         for key, value in data.items():
             self.main_table.add_row((key, str(value)))
-
-    def go_to_fields_screen(self):
-        self.manager.go_to_field_screen("left")
-
-    def on_enter(self):
-        self._initialize_table()
-        self.json_files = self._get_json_files()
-        self.menu = self._create_menu()

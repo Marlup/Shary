@@ -33,26 +33,26 @@
             size_hint_x: 0.3
             icon: "menu"
             pos_hint: {"center_x": 0.5}
-            on_release: app.root.get_screen("field").show_menu(self)
+            on_release: app.root.get_screen("fields").show_menu(self)
 
-    BoxLayout:
-        spacing: "10dp"
-        size_hint_y: None
-        height: "60dp"
-        pos_hint: {"center_x": 0.5}
-        padding: "5dp"
+    #BoxLayout:
+    #    spacing: "10dp"
+    #    size_hint_y: None
+    #    height: "60dp"
+    #    pos_hint: {"center_x": 0.5}
+    #    padding: "5dp"
 
-        MDTextField:
-            id: secret_key
-            hint_text: "Secret"
-            password: True
-            size_hint_x: 0.7
-            mode: "fill"
-            icon_right: "eye-off"
-            on_icon_right: app.root.get_screen("field").toggle_password_visibility()
+    #    MDTextField:
+    #        id: secret_key
+    #        hint_text: "Secret"
+    #        password: True
+    #        size_hint_x: 0.7
+    #        mode: "fill"
+    #        icon_right: "eye-off"
+    #        on_icon_right: app.root.get_screen("fields").toggle_password_visibility()
 
-        MDRaisedButton:
-            text: "New Key"
-            size_hint_x: 0.3
-            pos_hint: {"center_x": 0.5}
-            on_release: app.root.get_screen("field").generate_secret_key()
+    #    MDRaisedButton:
+    #        text: "New Key"
+    #        size_hint_x: 0.3
+    #        pos_hint: {"center_x": 0.5}
+    #        on_release: app.root.get_screen("fields").generate_secret_key()

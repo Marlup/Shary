@@ -1,22 +1,40 @@
-# Base image with Python
-FROM python:3.11
+FROM python:3.10-slim
 
-# Install Node.js and npm
-RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
-    apt-get install -y nodejs
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    zip \
+    unzip \
+    openjdk-17-jdk \
+    libncurses5 \
+    libstdc++6 \
+    libffi-dev \
+    libssl-dev \
+    libz-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libgl1-mesa-dev \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    python3-dev \
+    && apt-get clean
 
-# Set working directory
-WORKDIR /app
+# Set Java environment
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Copy local project files into container
-COPY . .
+# Install buildozer
+RUN pip install --upgrade pip setuptools cython virtualenv
+RUN pip install buildozer
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Add non-root user for safer builds
+RUN useradd -ms /bin/bash builduser
+USER builduser
 
-# Install Firebase Admin SDK for Python
-RUN pip install firebase-admin
+# Work directory will be bound via docker-compose volume
+WORKDIR /home/builduser/app
 
-# Set entry point
-CMD ["python", "main.py"]
+# Default entrypoint can be overridden
+CMD ["buildozer", "--help"]

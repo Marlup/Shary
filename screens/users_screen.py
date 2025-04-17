@@ -8,7 +8,7 @@ from kivymd.uix.snackbar import MDSnackbar
 from kivymd.uix.dialog import MDDialog
 
 from core.classes import (
-    AddUser,
+    UserDialog,
     EnhancedMDScreen
 )
 
@@ -20,24 +20,78 @@ from core.constant import (
     DEFAULT_ROW_KEY_WIDTH,
     DEFAULT_NUM_ROWS_PAGE,
     DEFAULT_USE_PAGINATION,
-    SCREEN_NAME_FIELD,
-    SCREEN_NAME_REQUEST,
-    SCREEN_NAME_USER,
+    SCREEN_NAME_USERS,
     PATH_SCHEMA_USER_DIALOG,
 )
 
 from core.dtos import UserDTO
 from repositories.user_repository import UserRepository
+from controller.app_controller import AppController
+from core.session import CurrentSession
 
-class UserScreen(EnhancedMDScreen):
-    def __init__(self, db_connection=None, **kwargs):
-        super().__init__(name=SCREEN_NAME_USER, **kwargs)
+class UsersScreen(EnhancedMDScreen):
+    def __init__(self, controller: AppController, db_connection=None, **kwargs):
+        super().__init__(name=SCREEN_NAME_USERS, **kwargs)
+        self.controller = controller
+        self.session = CurrentSession.get_instance()
         self.user_repo = UserRepository(db_connection)
         
         self.dialog = Builder.load_file(PATH_SCHEMA_USER_DIALOG)  # Load the dialog definition
         
         self.main_table = None
+    
+    def show_add_user_dialog(self):
+        self.dialog = MDDialog(
+            title="Add New User",
+            type="custom",
+            content_cls=UserDialog(size_hint_y=None, height="200dp"),  # Adjust height here
+            buttons=[
+                MDRaisedButton(text="CANCEL", on_release=lambda _: self.dialog.dismiss()),
+                MDRaisedButton(text="ADD", on_release=lambda _: self.add_user_from_popup()),
+            ],
+        )
+        self.dialog.open()
 
+    def add_user_from_popup(self, *args):
+        #Logger.info(f"ids for root {self.ids}")
+        #Logger.info(f"ids for root.dialog {self.dialog.ids}")
+        #Logger.info(f"ids for root.dialog.content_cls {self.dialog.content_cls.ids}")
+
+        dialog_ids = self.dialog.content_cls.ids
+        username = dialog_ids.username_input.text.strip()
+        email = dialog_ids.email_input.text.strip()
+        # TODO add phone and extension
+
+        if username and email:
+            self._add_user(username, email)
+            self.dialog.dismiss()
+            #toast(f"User '{username}' added successfully!")
+            MDSnackbar(f"User '{username}' added successfully!").open()
+        else:
+            #toast("Both Username and Email are required.")
+            MDSnackbar("Both Username and Email are required.").open()
+
+    def _cache_checked_users_in_session(self):
+        """Cache users selected from the Users UI table"""
+        index_email_column = 1
+        self.session.set_users_selected(
+            self._get_cells_from_checked_rows(index_email_column)
+        )
+    
+    def go_to_fields_screen(self):
+        self.manager.go_to_fields_screen("right")
+    
+    def go_to_requests_screen(self):
+        self.manager.go_to_requests_screen("left")
+
+    # Callbacks current screen events
+    def on_enter(self):
+        self._load_users_from_db()
+    
+    def on_leave(self):
+        self._cache_checked_users_in_session()
+
+    # ----- Internal methods -----
     def _delete_users(self):
         checked_rows = get_checked_rows(self.main_table, self.checked_rows)
 
@@ -104,46 +158,3 @@ class UserScreen(EnhancedMDScreen):
         # Bind checkbox selection event
         self.main_table.bind(on_check_press=self.on_row_check)
         self.ids.table_container.add_widget(self.main_table)
-    
-    def show_add_user_dialog(self):
-        self.dialog = MDDialog(
-            title="Add New User",
-            type="custom",
-            content_cls=AddUser(size_hint_y=None, height="200dp"),  # Adjust height here
-            buttons=[
-                MDRaisedButton(text="CANCEL", on_release=lambda _: self.dialog.dismiss()),
-                MDRaisedButton(text="ADD", on_release=lambda _: self.add_user_from_popup()),
-            ],
-        )
-        self.dialog.open()
-
-    def add_user_from_popup(self, *args):
-        #Logger.info(f"ids for root {self.ids}")
-        #Logger.info(f"ids for root.dialog {self.dialog.ids}")
-        #Logger.info(f"ids for root.dialog.content_cls {self.dialog.content_cls.ids}")
-
-        dialog_ids = self.dialog.content_cls.ids
-        username = dialog_ids.username_input.text.strip()
-        email = dialog_ids.email_input.text.strip()
-        # TODO add phone and extension
-
-        if username and email:
-            self._add_user(username, email)
-            self.dialog.dismiss()
-            #toast(f"User '{username}' added successfully!")
-            MDSnackbar(f"User '{username}' added successfully!").open()
-        else:
-            #toast("Both Username and Email are required.")
-            MDSnackbar("Both Username and Email are required.").open()
-
-    def get_checked_emails(self, index):
-        return self._get_cells_from_checked_rows(index)
-    
-    def go_to_fields_screen(self):
-        self.manager.go_to_user_screen("right")
-    
-    def go_to_requests_screen(self):
-        self.manager.g_oto_request_screen("left")
-
-    def on_enter(self):
-        self._load_users_from_db()

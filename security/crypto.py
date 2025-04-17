@@ -61,12 +61,20 @@ def write_temp_decrypted_data(decrypted_data, path=".env"):
         file.write(decrypted_data)
 
 class RSACrypto:
+    _instance = None
+
     """RSA Cryptography class for encryption, decryption, signing, and verifying."""
     def __init__(self, private_key=None, public_key=None, other_public_key=None, secret_key: str=None):
         self.private_key = private_key
         self.public_key = public_key
         self.other_public_key = other_public_key
         self.secret_key = secret_key
+    
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = RSACrypto()
+        return cls._instance
 
     def get_pubkey_to_string(self) -> str:
         """Get the public key as a string."""
@@ -75,7 +83,8 @@ class RSACrypto:
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
         return RSACrypto.convert_bytes_to_b64(pub_key_bytes)
-    staticmethod
+    
+    @staticmethod
     def make_pubkey_to_string(pubkey) -> str:
         """Get the public key as a string."""
         pub_key_bytes = pubkey.public_bytes(
@@ -90,18 +99,17 @@ class RSACrypto:
         pubkey_der = RSACrypto.convert_b64_to_bytes(pubkey_str)
         return serialization.load_der_public_key(pubkey_der)
 
-    @staticmethod
-    def generate(key_size=2048) -> 'RSACrypto':
+    def generate_keys(self, key_size=2048):
         """Generate a new RSA key pair."""
-        private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
-        return RSACrypto(private_key, private_key.public_key())
+        self.private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
+        self.public_key = self.private_key.public_key()
 
-    def save_keys(self, 
-                  priv_path=PATH_PRIVATE_KEY, 
-                  pub_path=PATH_PUBLIC_KEY,
+    def store_keys(self, 
+                  priv_path: str=PATH_PRIVATE_KEY, 
+                  pub_path: str=PATH_PUBLIC_KEY,
                   secrets_path=PATH_SECRET_KEY
                   ) -> None:
-        """Save the private and public keys to files."""
+        """Store the private and public keys to files."""
         
         if self.private_key:
             with open(priv_path, "wb") as f:
@@ -109,51 +117,48 @@ class RSACrypto:
                     encoding=serialization.Encoding.DER,
                     format=serialization.PrivateFormat.PKCS8,
                     encryption_algorithm=serialization.NoEncryption()
-                ))
+                )
+                )
 
         if self.public_key:
             with open(pub_path, "wb") as f:
                 f.write(self.public_key.public_bytes(
                     encoding=serialization.Encoding.DER,
                     format=serialization.PublicFormat.SubjectPublicKeyInfo
-                    ))
+                    )
+                    )
 
         if self.secret_key:
             with open(secrets_path, "wb") as f:
                 f.write(self.secret_key.encode("utf-8"))
 
-    @staticmethod
-    def try_load_from_files(
+    def try_load_keys_from_files(
+        self,
         priv_path=PATH_PRIVATE_KEY, 
         pub_path=PATH_PUBLIC_KEY
         ) -> 'RSACrypto':
         """Try to load keys from files. Generate new keys if not found."""
 
         if not os.path.exists(priv_path) or not os.path.exists(pub_path):
-            rsa_crypto = RSACrypto.generate()
-            rsa_crypto.save_keys()
-            return rsa_crypto
-
-        rsa_crypto = RSACrypto.load_from_files()
-        return rsa_crypto
+            self.generate_keys()
+            self.store_keys()
+        else:
+            self.load_keys_from_files()
     
-    @staticmethod
-    def load_from_files(priv_path=PATH_PRIVATE_KEY, pub_path=PATH_PUBLIC_KEY) -> 'RSACrypto':
+    def load_keys_from_files(
+            self,
+            priv_path=PATH_PRIVATE_KEY,
+            pub_path=PATH_PUBLIC_KEY
+            ) -> 'RSACrypto':
         """Load keys from files."""
-
-        private_key = None
-        public_key = None
 
         if priv_path:
             with open(priv_path, "rb") as f:
-                private_key = serialization.load_der_private_key(f.read(), password=None)
+                self.private_key = serialization.load_der_private_key(f.read(), password=None)
 
         if pub_path:
             with open(pub_path, "rb") as f:
-                public_key = serialization.load_der_public_key(f.read())
-                print(f"-----------\n\n public_key - {public_key}")
-
-        return RSACrypto(private_key, public_key)
+                self.public_key = serialization.load_der_public_key(f.read())
 
     def load_secret_key(self, secret_path=PATH_SECRET_KEY) -> str | None:
         """Load secret key from file."""
@@ -306,11 +311,11 @@ class RSACrypto:
 """
 # --- Demo usage ---
 if __name__ == "__main__":
-    rsa_crypto = RSACrypto.generate()
+    rsa_crypto = RSACrypto.generate_keys()
     rsa_crypto.save_keys()
 
     # Reload (simulate separate system)
-    rsa2 = RSACrypto.load_from_files()
+    rsa2 = RSACrypto.load_keys_from_files()
 
     message = b"Top secret from Shary"
     encrypted = rsa2.encrypt(message)

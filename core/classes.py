@@ -26,13 +26,13 @@ class EnhancedMDScreen(MDScreen):
             self.checked_rows.append(current_row)  # Check → Add to list
         #logging.debug(f"Manually Tracked Checked Rows: {len(self.checked_rows)}")
 
-class AddUser(MDBoxLayout):
+class UserDialog(MDBoxLayout):
     pass
 
-class AddRequestField(MDBoxLayout):
+class RequestFieldDialog(MDBoxLayout):
     pass
 
-class AddField(MDBoxLayout):
+class FieldDialog(MDBoxLayout):
     pass
 
 class SendEmailDialog(MDBoxLayout):

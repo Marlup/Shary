@@ -21,11 +21,11 @@ FILE_FORMATS = ("json", "csv", "xml", "yaml")
 USER_HEADERS = ("username", "email", "creation_date")
 
 # Names
-SCREEN_NAME_FIELD = "field"
-SCREEN_NAME_FILE_VISUALIZER = "file_visualizer"
+SCREEN_NAME_FIELDS = "fields"
+SCREEN_NAME_FILES_VISUALIZER = "files_visualizer"
 SCREEN_NAME_LOGIN = "login"
-SCREEN_NAME_REQUEST = "request"
-SCREEN_NAME_USER = "user"
+SCREEN_NAME_REQUESTS = "requests"
+SCREEN_NAME_USERS = "users"
 SCREEN_NAME_USER_CREATION = "user_creation"
 APPLICATION_NAME = "Shary"
 
@@ -52,11 +52,11 @@ PATH_SCHEMA_LOGIN = "./ui_layouts/login.kv"
 PATH_SCHEMA_REQUEST = "./ui_layouts/request.kv"
 PATH_SCHEMA_USER_CREATION = "./ui_layouts/user_creation.kv"
 PATH_SCHEMA_FILE_VISUALIZER = "./ui_layouts/file_visualizer.kv"
-PATH_SCHEMA_FIELD_DIALOG = "./ui_layouts/add_field_dialog.kv"
+PATH_SCHEMA_FIELD_DIALOG = "./ui_layouts/field_dialog.kv"
 PATH_SCHEMA_SEND_EMAIL_DIALOG = "./ui_layouts/send_email_dialog.kv"
 PATH_SCHEMA_CHANNEL_CONTENT_DIALOG = "./ui_layouts/select_channel_content.kv"
-PATH_SCHEMA_USER_DIALOG = "./ui_layouts/add_user_dialog.kv"
-PATH_SCHEMA_REQUEST_DIALOG = "./ui_layouts/add_request_dialog.kv"
+PATH_SCHEMA_USER_DIALOG = "./ui_layouts/user_dialog.kv"
+PATH_SCHEMA_REQUEST_DIALOG = "./ui_layouts/request_dialog.kv"
 # For data directories
 PATH_DATA_AUTHENTICATION = "./data/authentication"
 PATH_DATA_DOWNLOAD = "./data/download"

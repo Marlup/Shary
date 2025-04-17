@@ -2,6 +2,8 @@ import os
 import smtplib
 from email.message import EmailMessage
 
+from core.session import CurrentSession
+
 from core.constant import (
     MSG_DEFAULT_SEND_FILENAME,
     SMTP_SERVER,
@@ -19,9 +21,10 @@ from core.functions import (
 )
 
 class EmailService():
-    def __init__(self, main_email=None, username=None):
-        self.main_email = main_email
-        self.username = username
+    def __init__(self):
+        self.session: CurrentSession = CurrentSession.get_instance()
+        self.email = self.session.email
+        self.username = self.session.username
         self.email_password = "ugtt iggn nnni dchj"  # Replace with a safer secret handling strategy
 
     def _send(self, message):

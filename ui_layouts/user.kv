@@ -1,8 +1,8 @@
 # --- views/user.kv ---
 #:kivy 2.3.0
 
-<UserScreen>:
-    name: "user"
+<UsersScreen>:
+    name: "users"
     MDBoxLayout:
         orientation: "vertical"
         padding: dp(10)
@@ -33,5 +33,5 @@
             MDRaisedButton:
                 text: "Add User"
                 icon: "account-plus"
-                on_release: root.show_add_user_dialog()
+                on_release: root.show_user_dialog()
 

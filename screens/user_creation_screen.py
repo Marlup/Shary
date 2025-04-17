@@ -1,128 +1,131 @@
 # --- source/user_creation_screen.py ---
-import re
 import logging
 
 from dotenv import set_key
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.dialog import MDDialog
 import bcrypt
-import keyring
+
+from controller.app_controller import AppController
+from core.session import CurrentSession
+
+from core.functions import (
+    validate_password,
+    validate_email,
+)
 
 from core.constant import (
     SCREEN_NAME_USER_CREATION,
 )
 
-from core.dtos import OwnerDTO
-
 class UserCreationScreen(Screen):
-    def __init__(self, **kwargs):
+    def __init__(self, controller: AppController, **kwargs):
         super().__init__(name=SCREEN_NAME_USER_CREATION, **kwargs)
-    
-    def validate_password(self, password):
-        if len(password) < 8:
-            return "Password must be at least 8 characters long."
-        if not re.search(r"[A-Z]", password):
-            return "Password must contain at least one uppercase letter."
-        if not re.search(r"[a-z]", password):
-            return "Password must contain at least one lowercase letter."
-        if not re.search(r"\d", password):
-            return "Password must contain at least one number."
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-            return "Password must contain at least one special character (!@#$%^&*...)."
-        return None
+        
+        self.session = CurrentSession.get_instance()
+        self.controller = controller
 
-    def create_user(self):
+    # ----- Internal methods -----
+    def _create_user(self):
         if not self._validate_inputs():
             return
         
-        self._load_services()
+        self.session.generate_cryptographic_keys()
+        self.session.save_cryptographic_keys()
 
-        success = self._store_keys_to_cloud()
+        success = self._store_user_in_cloud()
         if success:
-            self._setup_environment_variables()
-            self._show_dialog("Success", "User created successfully!")
-            self._save_services()
-            self._load_login_screen()
+            # Store previously validated user credentials
+            self._store_cached_credentials()
+            
+            # Store previously generated cryptographic keys
+            self._store_cryptographic_keys()
+            
+            # Login screen
             self._go_to_login_screen()
+
+            self._show_dialog("Success", "User created successfully!")
         else:
             self._show_dialog("Error", "Invalid username or email. Choose another.")
 
-    def _show_dialog(self, title, message):
-        dialog = MDDialog(title=title, text=message)
-        dialog.open()
-
     def _validate_inputs(self) -> bool:
-        email = self._get_email()
-        username = self._get_username()
-        password = self._get_password()
-        confirm_password = self._get_confirm_password()
+        email = self._get_ui_email()
+        username = self._get_ui_username()
+        password = self._get_ui_password()
+        confirm_password = self._get_ui_confirm_password()
 
         logging.info(f"_validate_inputs - email: {email}")
         logging.info(f"_validate_inputs - username: {username}")
         logging.info(f"_validate_inputs - password: {password}")
         logging.info(f"_validate_inputs - confirm_password: {confirm_password}")
 
-        if not email:
-            self._show_dialog("Invalid Input", "Email cannot be empty.")
+        # Validate email exists
+        msg_email_validation, validated = validate_email(email)
+        if validated:
+            self._show_dialog("Invalid Input", msg_email_validation)
             return False
 
+        # Validate username exists
         if not username:
             self._show_dialog("Invalid Input", "Username cannot be empty.")
             return False
 
+        validated, msg_password_validation = validate_password(password)
+        if not validated:
+            self._show_dialog("Weak Password", msg_password_validation)
+            return False
+        
         if password != confirm_password:
             self._show_dialog("Password Error", "Passwords do not match.")
             return False
 
-        password_error = self.validate_password(password)
-        if password_error:
-            self._show_dialog("Weak Password", password_error)
-            return False
-
+        # Hash password safely
         safe_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-        self._cache_user_data(email, username, safe_password)
+
+        # Cache session credentials
+        self._cache_session_credentials(email, username, safe_password)
 
         return True
+    
+    def _show_dialog(self, title, message):
+        dialog = MDDialog(title=title, text=message)
+        dialog.open()
 
-    def _cache_user_data(self, email: str, username: str, safe_password: str):
-        if self.manager.owner is None:
-            self.manager.owner = OwnerDTO(
-                username=username,
-                email=email,
-                safe_password=safe_password
-            )
-
-    def _get_username(self):
+    #  ----- UI entrypoints -----
+    # UI Getters
+    def _get_ui_username(self) -> str:
         return self.ids.username_input.text.strip()
 
-    def _get_email(self):
+    def _get_ui_email(self) -> str:
         return self.ids.email_input.text.strip()
 
-    def _get_password(self):
+    def _get_ui_password(self) -> str:
         return self.ids.password_input.text.strip()
     
-    def _get_confirm_password(self):
+    def _get_ui_confirm_password(self):
         return self.ids.confirm_password_input.text.strip()
-
-    def _setup_environment_variables(self):
-        # Hash and store
-        keyring.set_password("shary_app", "owner_email", self.manager.owner.email)
-        keyring.set_password("shary_app", "owner_username", self.manager.owner.username)
-        keyring.set_password("shary_app", "owner_safe_password", self.manager.owner.safe_password)
-
-    def _store_keys_to_cloud(self) -> bool:
-        ok_store = self.manager.store_user_in_cloud()
-        return ok_store
-
+    
+    # UI screen transition
     def _go_to_login_screen(self):
+        self.manager.load_login_screen()
         self.manager.go_to_login_screen("left")
     
-    def _load_login_screen(self):
-        self.manager.load_login_screen()
+    # ----- Cache and store of credentials and cryptographic keys entrypoints -----
+    # Cryptographic keys
+    def _save_cryptographic_keys(self):
+        self.session.save_cryptographic_keys()()
 
-    def _save_services(self):
-        self.manager.save_services()
+    def _store_cryptographic_keys(self):
+        self.session.load_cryptographic_keys()
 
+    # Credentials
+    def _cache_session_credentials(self, email: str, username: str, safe_password: str):
+        self.session.cache_credentials(email, username, safe_password)
 
-    def _load_services(self):
-        self.manager.load_services()
+    def _store_cached_credentials(self):
+        self.session.store_cached_credentials()
+
+    # User
+    def _store_user_in_cloud(self) -> bool:
+        ok_store = self.controller.store_user(self.session.get_email())
+        return ok_store

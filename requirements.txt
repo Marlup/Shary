@@ -1,5 +1,5 @@
 kivy
-kivymd==2.0.0
+kivymd
 pyyaml
 python-dotenv
 flask
@@ -20,3 +20,4 @@ google-auth-httplib2
 pytest
 bcrypt
 keyring
+keyrings.alt

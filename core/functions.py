@@ -1,5 +1,5 @@
 import os
-import json
+import re
 import json
 import csv
 import yaml
@@ -15,13 +15,10 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
 from core.constant import (
-
     FIREBASE_HOST,
     FIREBASE_PORT,
-    PATH_ENV_VARIABLES
+    PATH_DATA_DOWNLOAD
 )
-
-from core.dtos import OwnerDTO
 
 FIREBASE_ENDPOINT = f"http://{FIREBASE_HOST}:{FIREBASE_PORT}/shary-21b61/us-central1"
 
@@ -43,7 +40,7 @@ def run_flask():
     backend_app.add_url_rule("/files/open", "open_file", open_file, methods=['GET'])
     backend_app.run(host="127.0.0.1", port=5000)
 
-def is_dir_empty(path):
+def is_dir_empty(path: str):
     return os.path.isdir(path) and len(os.listdir(path)) == 0
 
 def load_user_credentials():
@@ -52,7 +49,9 @@ def load_user_credentials():
     
     return sender_email, sender_password
 
-def build_file_from_selected_fields(rows, file_format="json") -> (str | dict | Any | None):
+def build_file_from_selected_fields(rows: list[str], 
+                                    file_format: str="json"
+                                    ) -> (str | dict[str, str] | Any | None):
     if file_format == "json":
         return get_selected_fields_as_json(rows)
     elif file_format == "csv":
@@ -75,7 +74,7 @@ def get_selected_fields_as_json(rows, as_dict=False) -> (str | dict):
         return json_fields
     return json.dumps(json_fields, indent=4)
 
-def get_selected_fields_as_req_json(rows, sender, as_dict=False) -> (str | dict):
+def get_selected_fields_as_req_json(rows: list[str], sender: str, as_dict=False) -> (str | dict[str, str]):
     """ Get fields as a JSON with request format. """
     json_fields = {"keys": []}
     
@@ -89,7 +88,7 @@ def get_selected_fields_as_req_json(rows, sender, as_dict=False) -> (str | dict)
         return json_fields
     return json.dumps(json_fields, indent=4)
 
-def get_selected_fields_as_csv(rows) -> Any:
+def get_selected_fields_as_csv(rows: list[str]) -> Any:
     """ Get selected fields as a CSV string. """
     output = StringIO()
     writer = csv.writer(output)
@@ -102,7 +101,7 @@ def get_selected_fields_as_csv(rows) -> Any:
 
     return output.getvalue()
 
-def get_selected_fields_as_xml(rows) -> str:
+def get_selected_fields_as_xml(rows: list[str]) -> str:
     """ Get selected fields as an XML string. """
     root = ET.Element("Fields")
 
@@ -112,7 +111,7 @@ def get_selected_fields_as_xml(rows) -> str:
 
     return ET.tostring(root, encoding="utf-8").decode("utf-8")
 
-def get_selected_fields_as_yaml(rows) -> str:
+def get_selected_fields_as_yaml(rows: list[str]) -> str:
     """ Get selected fields as a YAML dictionary. """
     yaml_fields = {}
     
@@ -123,7 +122,7 @@ def get_selected_fields_as_yaml(rows) -> str:
                      default_flow_style=False,
                      allow_unicode=True)
 
-def parsed_fields_as_vertical_string(rows) -> str:
+def parsed_fields_as_vertical_string(rows: list[str]) -> str:
     keys_values = []
     for key, value, *_ in rows:
         keys_values.append(f"- {key}: {value}")
@@ -216,3 +215,35 @@ def get_checked_rows(table, checked_rows) -> list:
     if table is None or not checked_rows:
         return []
     return checked_rows
+
+def get_json_files() -> list[str]:
+    """Retrieve available JSON files from a directory."""
+    if not os.path.exists(PATH_DATA_DOWNLOAD):
+        os.makedirs(PATH_DATA_DOWNLOAD)
+    
+    downloaded_files = os.listdir(PATH_DATA_DOWNLOAD)
+    return [f for f in downloaded_files if f.endswith(".json")]
+
+def validate_password(password: str) -> str | None:
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character (!@#$%^&*...)."
+    return True, ""
+
+def validate_email(email: str) -> str | None:
+    if not email:
+        return False, "Email cannot be empty."
+    if not "@" in email:
+        return False, "Unexpected email format: @?."
+    if email.startswith("@"):
+        return False, "Unexpected email format: starts with @."
+    return True, ""
+    
+    #re.search("^\w+@\w[.]{1}\w")
