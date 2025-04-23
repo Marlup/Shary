@@ -1,0 +1,50 @@
+# --- user_creation.kv ---
+#:kivy 2.3.0
+
+<UserCreationScreen>:
+    name: "user_creation"
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+
+        MDLabel:
+            text: "Create New User"
+            halign: "center"
+            theme_text_color: "Primary"
+            font_style: "H5"
+
+        MDTextField:
+            id: email_input
+            #hint_text: "Email"
+            helper_text: "Enter your email"
+            helper_text_mode: "persistent"
+            icon_left: "email"
+
+        MDTextField:
+            id: username_input
+            #hint_text: "Username"
+            helper_text: "Enter your username"
+            helper_text_mode: "persistent"
+            icon_left: "account"
+
+        MDTextField:
+            id: password_input
+            #hint_text: "Password"
+            password: True
+            helper_text: "Must contain uppercase, lowercase, number, and special character"
+            helper_text_mode: "persistent"
+            icon_left: "lock"
+            #icon_right: "eye-off"
+
+        MDTextField:
+            id: confirm_password_input
+            #hint_text: "Confirm Password"
+            password: True
+            icon_left: "lock-open"
+            #icon_right: "eye-off"
+
+        MDRaisedButton:
+            text: "Create User"
+            pos_hint: {"center_x": 0.5}
+            on_release: root._create_user()

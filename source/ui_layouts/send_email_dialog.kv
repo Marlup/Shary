@@ -1,0 +1,14 @@
+# --- views/send_email_dialog.kv ---
+#:kivy 2.3.0
+
+<SendEmailDialog>:
+    id: send_email_dialog  # ✅ Ensure the main dialog has an ID
+    orientation: "vertical"
+    spacing: dp(10)
+    padding: dp(20)
+
+    MDTextField:
+        id: filename_input
+        hint_text: "File name"
+        helper_text: "Enter the file name for the email attachment"
+        helper_text_mode: "on_focus"
