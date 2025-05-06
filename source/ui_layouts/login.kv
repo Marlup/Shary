@@ -1,0 +1,35 @@
+# --- login.kv ---
+#:kivy 2.3.0
+
+<LoginScreen>:
+    name: "login"
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(20)
+
+        MDTopAppBar:
+            title: "Welcome to Shary!"
+            halign: "center"
+            theme_text_color: "Primary"
+
+        MDLabel:
+            text: "Login"
+            font_style: "H5"
+            halign: "center"
+
+        MDTextField:
+            id: username_input
+            hint_text: "Username"
+            multiline: False
+
+        MDTextField:
+            id: password_input
+            hint_text: "Password"
+            password: True
+            multiline: False
+
+        MDRaisedButton:
+            text: "Login"
+            pos_hint: {"center_x": 0.5}
+            on_release: root.check_login()

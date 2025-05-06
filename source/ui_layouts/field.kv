@@ -1,0 +1,42 @@
+# --- field.kv ---
+#:kivy 2.3.0
+
+<FieldsScreen>:
+    name: "fields"
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        MDTopAppBar:
+            title: "Fields Management"
+            elevation: 5
+            right_action_items: [["account-group", lambda _: root.go_to_users_screen(), "Users List"]]
+            left_action_items: [["upload", lambda _: root.go_to_files_visualizer_screen(), "File Visualizer List"], ["file-send", lambda _: root.go_to_requests_screen(), "Request List"]]
+
+        MDBoxLayout:
+            id: table_container
+            size_hint: (0.9, 0.6)
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            width: dp(100)
+
+        MDBoxLayout:
+            adaptive_height: True
+            spacing: dp(10)
+            halign: "center"
+
+            MDRaisedButton:
+                text: "Send Fields"
+                icon: "email"
+                on_release: root.open_channel_dialog()
+
+            MDRaisedButton:
+                text: "Remove Field"
+                icon: "minus"
+                on_release: root._delete_fields()
+
+            MDRaisedButton:
+                text: "Add Field"
+                icon: "plus"
+                on_release: root.open_add_dialog()
+            
