@@ -1,5 +1,5 @@
-from typing import List
 import sqlite3
+from typing import List
 from kivy.logger import Logger
 
 from core.constant import PATH_DB
@@ -8,17 +8,21 @@ from core.queries import (
     DELETE_FIELD_BY_KEY,
     SELECT_ALL_FIELDS
 )
-from core.interfaces import IFieldRepository
+
 from core.dtos import FieldDTO
+from core.interfaces import IFieldRepository
+from services.security_service import SecurityService
+
 
 class FieldRepository(IFieldRepository):
     def __init__(self, db_connection=None):
         self.db_connection = db_connection if db_connection else sqlite3.connect(PATH_DB)
 
-    def add_field(self, field: FieldDTO) -> None:
+    def add_field(self, field: List[str]) -> None:
         cursor = self.db_connection.cursor()
+
         try:
-            cursor.execute(INSERT_FIELD, (field.key, field.value, field.alias_key))
+            cursor.execute(INSERT_FIELD, field)
             self.db_connection.commit()
         except sqlite3.IntegrityError:
             Logger.warning(f"IntegrityError: INSERT operation attempt failed for key {field.key}. Potential duplication.")
@@ -42,5 +46,5 @@ class FieldRepository(IFieldRepository):
         cursor.execute(SELECT_ALL_FIELDS)
         records = cursor.fetchall()
         cursor.close()
-        
-        return [FieldDTO(key=r[0], value=r[1], alias_key=r[2], date_added=r[3]) for r in records]
+
+        return records #[FieldDTO(key=r[0], value=r[3], alias_key=r[2], date_added=r[3]) for r in records]

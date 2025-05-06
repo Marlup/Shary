@@ -136,5 +136,6 @@ class UserCreationScreen(EnhancedMDScreen):
 
     # User
     def _upload_user(self, email: str) -> bool:
-        ok_store = self.cloud_service.upload_user(email)
+        ok_store, token = self.cloud_service.upload_user(email)
+        self.session.set_verification_token(token)
         return ok_store

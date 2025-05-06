@@ -38,10 +38,6 @@ class AppController:
     def is_owner_registered(self, owner: str) -> bool:
         is_registered = self._cloud.is_owner_registered(owner)
         return is_registered
-
-    def send_ping(self) -> bool:
-        is_online = self._cloud.send_ping()
-        return is_online
     
     def upload_user(self, owner: str):
         return self._cloud.upload_user(owner)
@@ -52,8 +48,8 @@ class AppController:
     def get_pubkey(self, other: str):
         return self._cloud.get_user_pubkey(other)
 
-    def send_data_to_cloud(self, rows: list[str], owner: str, consumers: list[str], on_request: bool=False):
-        return self._cloud.send_data(rows, owner, consumers, on_request)
+    def upload_data(self, rows: list[str], owner: str, consumers: list[str], on_request: bool=False):
+        return self._cloud.upload_data(rows, owner, consumers, on_request)
 
     # Email-service
     def send_email_with_fields(self, rows, recipients, filename, file_format):

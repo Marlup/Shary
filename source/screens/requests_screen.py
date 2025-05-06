@@ -36,7 +36,7 @@ class RequestsScreen(EnhancedTableMDScreen):
 
     # ----- Callbacks current screen events -----
     def on_enter(self):
-        self._load_requests_from_db()
+        self._load_from_db()
 
     # ----- Navigation -----
     def go_to_fields_screen(self):
@@ -46,21 +46,21 @@ class RequestsScreen(EnhancedTableMDScreen):
         self.manager.go_to_users_screen("right")
 
     # ----- Dialog: Add request field -----
-    def show_request_dialog(self):
+    def open_request_dialog(self):
         self.request_dialog = MDDialog(
             title="Add Field to be requested",
             type="custom",
             content_cls=RequestFieldDialog(size_hint_y=None, height="150dp"),
             buttons=[
                 MDRaisedButton(text="CANCEL", on_release=lambda _: self.request_dialog.dismiss()),
-                MDRaisedButton(text="ADD", on_release=lambda _: self.add_request_from_popup()),
+                MDRaisedButton(text="ADD", on_release=lambda _: self.validate_add_request()),
             ],
         )
         self.request_dialog.open()
 
-    def add_request_from_popup(self, *args):
+    def validate_add_request(self, *args):
         key = self._get_ui_key()
-        alt_key_name = self._get_ui_alt_key_name()
+        alt_key_name = self._get_ui_alt_key()
 
         if key:
             self._add_request(key, alt_key_name)
@@ -70,7 +70,7 @@ class RequestsScreen(EnhancedTableMDScreen):
             MDSnackbar("Key is required.").open()
 
     # ----- Dialog: Send email -----
-    def show_send_email_dialog(self):
+    def open_email_dialog(self):
         if not self.email_dialog:
             self.email_dialog = MDDialog(
                 title="Send Request Fields via Email",
@@ -78,12 +78,12 @@ class RequestsScreen(EnhancedTableMDScreen):
                 content_cls=SendEmailDialog(size_hint_y=None, height="200dp"),
                 buttons=[
                     MDRaisedButton(text="Cancel", on_release=lambda _: self.email_dialog.dismiss()),
-                    MDRaisedButton(text="Send", on_release=lambda _: self.send_email_from_dialog()),
+                    MDRaisedButton(text="Send", on_release=lambda _: self.call_email_service()),
                 ],
             )
         self.email_dialog.open()
 
-    def send_email_from_dialog(self):
+    def call_email_service(self):
         # Load the data for the payload
         filename = self._get_ui_filename_attach()
         requested_keys = self._get_checked_requested_keys()
@@ -107,11 +107,11 @@ class RequestsScreen(EnhancedTableMDScreen):
     def _get_ui_key(self):
         return self.request_dialog.content_cls.ids.key_input.text.strip()
 
-    def _get_ui_alt_key_name(self):
+    def _get_ui_alt_key(self):
         return self.request_dialog.content_cls.ids.alt_key_name_input.text.strip()
 
     # ----- Table Data Management -----
-    def _load_requests_from_db(self):
+    def _load_from_db(self):
         column_data = [
             ("Key", dp(DEFAULT_ROW_KEY_WIDTH)),
             ("Other Names", dp(DEFAULT_ROW_VALUE_WIDTH)),

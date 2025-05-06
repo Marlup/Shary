@@ -29,19 +29,19 @@ class UsersScreen(EnhancedTableMDScreen):
         
         self.dialog = Builder.load_file(PATH_SCHEMA_USER_DIALOG)  # Load the dialog definition
     
-    def show_add_user_dialog(self):
+    def open_add_dialog(self):
         self.dialog = MDDialog(
             title="Add New User",
             type="custom",
             content_cls=UserDialog(size_hint_y=None, height="200dp"),  # Adjust height here
             buttons=[
                 MDRaisedButton(text="CANCEL", on_release=lambda _: self.dialog.dismiss()),
-                MDRaisedButton(text="ADD", on_release=lambda _: self.add_user_from_popup()),
+                MDRaisedButton(text="ADD", on_release=lambda _: self.validate_add_user()),
             ],
         )
         self.dialog.open()
 
-    def add_user_from_popup(self, *args):
+    def validate_add_user(self, *args):
         username = self.get_ui_username()
         email = self.get_ui_email()
 
@@ -67,7 +67,7 @@ class UsersScreen(EnhancedTableMDScreen):
 
     # Callbacks current screen events
     def on_enter(self):
-        self._load_users_table_from_db()
+        self._load_table_from_db()
     
     def on_leave(self):
         self._cache_checked_users_in_session()
@@ -104,7 +104,7 @@ class UsersScreen(EnhancedTableMDScreen):
         self.user_service.create_user(username, email)
         self._add_row((username, email, ""))
     
-    def _load_users_table_from_db(self):
+    def _load_table_from_db(self):
         column_data = [
             ("Username", dp(DEFAULT_ROW_KEY_WIDTH)),
             ("Email", dp(DEFAULT_ROW_KEY_WIDTH + 10)),

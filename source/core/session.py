@@ -28,6 +28,7 @@ class Session():
         self.username = None
         self.safe_password = None
         self.is_password_safe = False
+        self.verification_token = None
 
         # Owner status
 
@@ -115,6 +116,7 @@ class Session():
         self.email = data.get("owner_email")
         self.username = data.get("owner_username")
         self.safe_password = data.get("owner_safe_password")
+        self.verification_token = data.get("verification_token", "")
 
     def delete_credentials(self):
         if os.path.exists(PATH_FILE_CREDENTIALS):
@@ -130,6 +132,9 @@ class Session():
     
     def get_safe_password(self):
         return self.safe_password
+    
+    def get_verification_token(self):
+        return self.verification_token
 
     def get_checked_users(self):
         return [] or self.checked_users
@@ -137,6 +142,9 @@ class Session():
     def set_checked_users(self, users):
         if users:
             self.checked_users = users
+
+    def set_verification_token(self, token):
+        self.verification_token = token
 
     def try_login(self, ui_username: str, ui_password: str) -> bool:
         # Hash password from UI

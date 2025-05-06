@@ -57,6 +57,9 @@ class EnhancedTableMDScreen(EnhancedMDScreen):
         # Avoid copy by reference
         return [] or self.checked_rows
     
+    def _clear_checked_rows(self):
+        self.checked_rows.clear()
+
     def _delete_rows(self) -> list[str]:
         checked_rows = self._get_checked_rows()
         if checked_rows is None:
@@ -66,10 +69,11 @@ class EnhancedTableMDScreen(EnhancedMDScreen):
         for checked_row in checked_rows:
             logging.info(f"Row removed from table: {checked_row}")
             self.main_table.remove_row(tuple(checked_row))
-            self.checked_rows.remove(checked_row)
 
             rows_pk_key = self._get_checked_cell(checked_row, 0, True)
             rows_pk_keys.append(rows_pk_key)
+        
+        self._clear_checked_rows()
 
         return rows_pk_keys
     

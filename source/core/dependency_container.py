@@ -37,7 +37,7 @@ class DependencyContainer:
         cls.register("session", session)
 
         # Repository Services
-        field = FieldService(FieldRepository())
+        field = FieldService(FieldRepository(), security)
         user = UserService(UserRepository())
         request = RequestService(RequestRepository())
 

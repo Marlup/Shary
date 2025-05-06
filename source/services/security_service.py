@@ -3,9 +3,12 @@ import base64
 import hashlib
 import json
 import time
-import rsa
 import logging
 
+import rsa
+import rsa.prime
+from rsa.key import PublicKey, PrivateKey
+from rsa.common import inverse
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
 
@@ -22,18 +25,29 @@ from core.security_utils import (
     hash_by_pbkdf2,
 )
 
-class DeterministicRNG():
+# Generador determinista de enteros y primos
+class DeterministicRNG:
     def __init__(self, seed: bytes):
         self.seed = seed
         self.counter = 0
 
-    def read(self, n: int) -> bytes:
+    def get_bytes(self, n: int) -> bytes:
         output = b""
         while len(output) < n:
-            data = self.seed + self.counter.to_bytes(4, byteorder='big')
-            output += hashlib.sha256(data).digest()
+            block = hashlib.sha256(self.seed + self.counter.to_bytes(4, 'big')).digest()
+            output += block
             self.counter += 1
         return output[:n]
+
+    def get_int(self, bits: int) -> int:
+        nbytes = (bits + 7) // 8
+        return int.from_bytes(self.get_bytes(nbytes), "big")
+
+    def get_prime(self, bits: int) -> int:
+        while True:
+            candidate = self.get_int(bits) | 1  # forzar impar
+            if rsa.prime.is_prime(candidate):
+                return candidate
 
 class SecurityService:
     _instance = None
@@ -72,33 +86,59 @@ class SecurityService:
     def generate_keys(self, key_size=2048):
         self.public_key, self.private_key = rsa.newkeys(key_size)
     
+    # Paso 2: Generador determinista de bytes
+    class DeterministicRNG:
+        def __init__(self, seed: bytes):
+            self.seed = seed
+            self.counter = 0
+
+        def read(self, n: int) -> bytes:
+            output = b""
+            while len(output) < n:
+                data = self.seed + self.counter.to_bytes(4, "big")
+                output += hashlib.sha256(data).digest()
+                self.counter += 1
+            return output[:n]
+        
     def generate_keys_from_secrets(self, password: str, username: str, key_size=1024):
-        # Paso 1: Derivamos semilla desde password + username
+        """
+        Genera claves RSA públicas y privadas de forma determinista a partir de username y password.
+        Las claves generadas serán idénticas para los mismos parámetros.
+        """
+
+        # Derivar semilla desde password + username como salt
         salt = username.encode("utf-8")
-        seed = PBKDF2(password.encode("utf-8"), salt, dkLen=32, count=100_000, hmac_hash_module=SHA256)
-
-        # Paso 2: Generador determinista de bytes
-        class DeterministicRNG:
-            def __init__(self, seed: bytes):
-                self.seed = seed
-                self.counter = 0
-
-            def read(self, n: int) -> bytes:
-                output = b""
-                while len(output) < n:
-                    data = self.seed + self.counter.to_bytes(4, "big")
-                    output += hashlib.sha256(data).digest()
-                    self.counter += 1
-                return output[:n]
+        seed = PBKDF2(
+            password.encode("utf-8"),
+            salt,
+            dkLen=32,
+            count=100_000,
+            hmac_hash_module=SHA256
+        )
 
         rng = DeterministicRNG(seed)
 
-        # Paso 3: Monkey patch (correctamente)
-        import rsa.randnum
-        rsa.randnum.read_random_bytes = rng.read
+        e = 65537
+        half_bits = key_size // 2
 
-        # Paso 4: Generamos claves determinísticas
-        self.public_key, self.private_key = rsa.newkeys(key_size)
+        # Obtener primos p y q distintos
+        p = rng.get_prime(half_bits)
+        q = rng.get_prime(half_bits)
+        while q == p:
+            q = rng.get_prime(half_bits)
+
+        n = p * q
+        phi_n = (p - 1) * (q - 1)
+        d = inverse(e, phi_n)
+        #dP = d % (p - 1)
+        #dQ = d % (q - 1)
+        #qInv = inverse(q, p)
+
+        # Asignar claves
+        self.public_key = PublicKey(n, e)
+        self.private_key = PrivateKey(n, e, d, p, q)
+        logging.debug(f"public_key: {self.public_key}")
+        logging.debug(f"private_key: {self.private_key}")
 
         logging.debug(f"Cryptographic keys generated.")
     
@@ -164,7 +204,6 @@ class SecurityService:
         return ""
 
     # --- Crypto Core ---
-
     def encrypt(self, plaintext: bytes, public_key=None) -> bytes:
         key = public_key or self.public_key
         if not key:

@@ -16,6 +16,8 @@ from services.security_service import (
     SecurityService
 )
 
+from core.session import Session
+
 from core.functions import (
     get_selected_fields_as_req_json,
     get_selected_fields_as_json
@@ -40,11 +42,11 @@ class CloudService():
     endpoint_send_data = f"{base_endpoint}/store_payload"
     endpoint_ping = f"{base_endpoint}/ping"
 
-    def __init__(self, security_service: SecurityService):
+    def __init__(self, session: Session, security_service: SecurityService):
+        self.session = session
         self.security_service = security_service
 
         self.document_expiration_time = TIME_DOCUMENT_ALIVE
-        self.token = self.load_verification_token()
         
         # Attributes for service states
         self.is_online: bool = None
@@ -53,9 +55,8 @@ class CloudService():
         def decorator(method):
             @wraps(method)
             def wrapper(self, *args, **kwargs):
-                #logging.info(f"check_service_online - token: {self.token}")
                 if self.is_online in [False, None]:
-                    self.is_online = self.send_ping()
+                    self.is_online = self._send_ping()
                 if self.is_online:
                     return method(self, *args, **kwargs)
                 
@@ -80,7 +81,6 @@ class CloudService():
         try:
             _ = requests.get(self.endpoint_ping)
             self.is_online = True
-            self.load_verification_token()
             return True
         except:
             self.is_online = False
@@ -96,7 +96,7 @@ class CloudService():
 
             # Data
             pubkey = self.security_service.get_pubkey_to_string()
-            #logging.debug(f"store_user - pubkey - {pubkey}")
+            #logging.debug(f"upload_user - pubkey - {pubkey}")
             
             # Setup payload details
             payload_details = self._setup_user_payload_details(owner_hash, pubkey)
@@ -113,16 +113,15 @@ class CloudService():
             
             if response.status_code == 200:
                 self.is_online = True
-                self._set_verification_token(payload["token"])
                 shorten_token = shorten_key_string(payload["token"])
                 logging.debug(f"User stored in cloud. Token: {shorten_token}")
-                return True
+                return True, payload["token"]
             
             elif response.status_code != 409:
                 self.is_online = False
                 logging.debug(f"User already stored in cloud")
-                return True
-            return False
+                return True, ""
+            return False, ""
         
         except Exception as e:
             self.is_online = False
@@ -314,10 +313,10 @@ class CloudService():
             }
 
     def _make_header(self):
+        token = self.session.get_verification_token()
         header = {
-            "Authorization": f"Bearer {self.token}"
+            "Authorization": f"Bearer {token}"
         }
-        logging.debug(f"self.token: {self.token}")
         return header
 
     def _make_credentials(self, fields: list[str]):
@@ -330,18 +329,6 @@ class CloudService():
         # 3. Convert signature to base64 string for safe transport
         signature = self.security_service.convert_bytes_to_b64(signature)
         return signature, verification_code
-    
-    def _set_verification_token(self, token: str):
-        self.token = token
-        self.save_verification_token(token)
-    
-    def save_verification_token(self, token: str) -> None:
-        keyring.set_password("shary_app", "owner_verification_token", token)
-    
-    def load_verification_token(self) -> str:
-        token = keyring.get_password("shary_app", "owner_verification_token")
-        self.token = token if token else ""
-        return self.token
 
     @staticmethod
     def evaluate_status_code(status_code):

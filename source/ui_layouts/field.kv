@@ -28,9 +28,7 @@
             MDRaisedButton:
                 text: "Send Fields"
                 icon: "email"
-                # on_release: root.show_send_email_dialog()
-                #on_release: root.show_send_to_firebase_dialog()
-                on_release: root.show_select_channel_dialog()
+                on_release: root.open_channel_dialog()
 
             MDRaisedButton:
                 text: "Remove Field"
@@ -40,5 +38,5 @@
             MDRaisedButton:
                 text: "Add Field"
                 icon: "plus"
-                on_release: root.show_field_dialog()
+                on_release: root.open_add_dialog()
             
